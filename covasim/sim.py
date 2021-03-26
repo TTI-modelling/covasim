@@ -71,6 +71,7 @@ class Sim(cvb.BaseSim):
         self.results_ready = False    # Whether or not results are ready
         self._default_ver  = version  # Default version of parameters used
         self._orig_pars    = None     # Store original parameters to optionally restore at the end of the simulation
+        self.infection_dynamics = cvinf.InfectionDynamics()
 
         # Update the parameters
         default_pars = cvpar.make_pars(version=version) # Start with default pars
@@ -411,14 +412,15 @@ class Sim(cvb.BaseSim):
         if self['infection_dynamics'] == 'default':
 
             print('Initialising infection dynamics with default model')
-            self['infection_dynamics'] = cvinf.HighLowInfectiousness()
-            self['infection_dynamics'].initialize(self)
+            self.infection_dynamics = cvinf.HighLowInfectiousness()
+            self.infection_dynamics.initialize(self)
 
             pass
         elif isinstance(self['infection_dynamics'], (cvinf.InfectionDynamics)):
 
             print('Initialising infection dynamics with custom model')
-            self['infection_dynamics'].initialize(self)
+            self.infection_dynamics = self['infection_dynamics']
+            self.infection_dynamics.initialize(self)
 
         else:
             raise TypeError('''Specified infection_dynamics required to either be default string 
@@ -535,13 +537,9 @@ class Sim(cvb.BaseSim):
         # Compute the probability of transmission
         beta         = cvd.default_float(self['beta'])
         asymp_factor = cvd.default_float(self['asymp_factor'])
-        frac_time    = cvd.default_float(self['viral_dist']['frac_time'])
-        load_ratio   = cvd.default_float(self['viral_dist']['load_ratio'])
-        high_cap     = cvd.default_float(self['viral_dist']['high_cap'])
-        date_inf     = people.date_infectious
-        date_rec     = people.date_recovered
-        date_dead    = people.date_dead
-        viral_load = cvu.high_low_transmissibility(t, date_inf, date_rec, date_dead, frac_time, load_ratio, high_cap)
+
+        # Make a call to infection dynamics to 
+        infectiousness = self.infection_dynamics.compute_relative_transmissibility(self)
 
         for lkey,layer in contacts.items():
             p1 = layer['p1']
@@ -559,7 +557,7 @@ class Sim(cvb.BaseSim):
             iso_factor  = cvd.default_float(self['iso_factor'][lkey])
             quar_factor = cvd.default_float(self['quar_factor'][lkey])
             beta_layer  = cvd.default_float(self['beta_layer'][lkey])
-            rel_trans, rel_sus = cvu.compute_trans_sus(rel_trans, rel_sus, inf, sus, beta_layer, viral_load, symp, diag, quar, asymp_factor, iso_factor, quar_factor)
+            rel_trans, rel_sus = cvu.compute_trans_sus(rel_trans, rel_sus, inf, sus, beta_layer, infectiousness, symp, diag, quar, asymp_factor, iso_factor, quar_factor)
 
             # Calculate actual transmission
             for sources,targets in [[p1,p2], [p2,p1]]: # Loop over the contact network from p1->p2 and p2->p1
