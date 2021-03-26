@@ -13,7 +13,7 @@ class InfectionDynamics():
 
     def __init__(self, label=None) -> None:
         
-        self.label = label # e.g. "On-off viral load"
+        self.label = label # e.g. "Martyn's infection dynamics model"
         return
     
     def initialize(self, sim):
@@ -47,13 +47,14 @@ class HighLowInfectiousness(InfectionDynamics):
         Computes relative transmissibility using a default implementation of infectiousness
         '''
         
-        # unpack relavent parameters from this step of the simulation
+        # unpack relevent parameters from this step of the simulation
         frac_time    = cvd.default_float(sim['viral_dist']['frac_time'])
         load_ratio   = cvd.default_float(sim['viral_dist']['load_ratio'])
         high_cap     = cvd.default_float(sim['viral_dist']['high_cap'])
         date_inf     = sim.people.date_infectious
         date_rec     = sim.people.date_recovered
         date_dead    = sim.people.date_dead
-        t            = sim.ts
+        t            = sim.t
 
+        # use the implementation of the transmission dynamics implemented in the base model in Numba
         return cvu.high_low_transmissibility(t, date_inf, date_rec, date_dead, frac_time, load_ratio, high_cap)
