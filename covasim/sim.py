@@ -511,7 +511,7 @@ class Sim(cvb.BaseSim):
         date_inf     = people.date_infectious
         date_rec     = people.date_recovered
         date_dead    = people.date_dead
-        viral_load = cvu.compute_viral_load(t, date_inf, date_rec, date_dead, frac_time, load_ratio, high_cap)
+        viral_load = cvu.compute_relative_transmissibility(t, date_inf, date_rec, date_dead, frac_time, load_ratio, high_cap)
 
         for lkey,layer in contacts.items():
             p1 = layer['p1']
