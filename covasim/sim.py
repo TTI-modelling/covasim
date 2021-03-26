@@ -424,7 +424,7 @@ class Sim(cvb.BaseSim):
 
         else:
             raise TypeError('''Specified infection_dynamics required to either be default string 
-                            or instance of infection_dynamcis class''')
+                            or instance of infection_dynamics class''')
 
 
     def init_interventions(self):
@@ -539,7 +539,7 @@ class Sim(cvb.BaseSim):
         asymp_factor = cvd.default_float(self['asymp_factor'])
 
         # Make a call to infection dynamics to 
-        infectiousness = self.infection_dynamics.compute_relative_transmissibility(self)
+        infectiousness = self.infection_dynamics.compute_infectiousness(self)
 
         for lkey,layer in contacts.items():
             p1 = layer['p1']
