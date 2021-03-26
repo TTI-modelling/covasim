@@ -3,7 +3,10 @@ Defines the Sim class, Covasim's core class.
 '''
 
 #%% Imports
+from copy import Error
+from logging import error
 import numpy as np
+from numpy.lib.arraysetops import isin
 import pandas as pd
 import sciris as sc
 from . import utils as cvu
@@ -15,6 +18,7 @@ from . import population as cvpop
 from . import plotting as cvplt
 from . import interventions as cvi
 from . import analysis as cva
+from . import infection as cvinf
 
 # Almost everything in this file is contained in the Sim class
 __all__ = ['Sim', 'diff_sims', 'AlreadyRunError']
@@ -110,6 +114,7 @@ class Sim(cvb.BaseSim):
         self.init_results() # Create the results structure
         self.init_people(save_pop=self.save_pop, load_pop=self.load_pop, popfile=self.popfile, reset=reset, **kwargs) # Create all the people (slow)
         self.validate_layer_pars() # Once the population is initialized, validate the layer parameters again
+        self.init_infection_dynamics() # Initialize the infection dynamics
         self.init_interventions() # Initialize the interventions
         self.init_analyzers() # ...and the interventions
         self.set_seed() # Reset the random seed again so the random number stream is consistent
@@ -394,6 +399,31 @@ class Sim(cvb.BaseSim):
         self.people.infect(inds=inds, layer='seed_infection')
         return
 
+    def init_infection_dynamics(self):
+        ''' Initialize and validate the infection dynamics'''
+
+        # Initialization
+        if self._orig_pars and 'infection_dynamics' in self._orig_pars:
+            self['infection_dynamics'] = self._orig_pars.pop('infection_dynamics') # Restore
+
+        # TODO: add error handling in case someone tries to pass multiple infection dynamics
+
+        if self['infection_dynamics'] == 'default':
+
+            print('Initialising infection dynamics with default model')
+            self['infection_dynamics'] = cvinf.HighLowInfectiousness()
+            self['infection_dynamics'].initialize(self)
+
+            pass
+        elif isinstance(self['infection_dynamics'], (cvinf.InfectionDynamics)):
+
+            print('Initialising infection dynamics with custom model')
+            self['infection_dynamics'].initialize(self)
+
+        else:
+            raise TypeError('''Specified infection_dynamics required to either be default string 
+                            or instance of infection_dynamcis class''')
+
 
     def init_interventions(self):
         ''' Initialize and validate the interventions '''
@@ -511,7 +541,7 @@ class Sim(cvb.BaseSim):
         date_inf     = people.date_infectious
         date_rec     = people.date_recovered
         date_dead    = people.date_dead
-        viral_load = cvu.compute_relative_transmissibility(t, date_inf, date_rec, date_dead, frac_time, load_ratio, high_cap)
+        viral_load = cvu.high_low_transmissibility(t, date_inf, date_rec, date_dead, frac_time, load_ratio, high_cap)
 
         for lkey,layer in contacts.items():
             p1 = layer['p1']
