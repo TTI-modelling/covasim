@@ -26,7 +26,7 @@ class InfectionDynamics():
         self.initialized = True
         return
 
-    def compute_relative_transmissibility(self, sim):
+    def compute_infectiousness(self, sim):
         '''
         Takes the simulation object as an input and compute the relative transmissibility for infectious nodes.
 
@@ -42,7 +42,7 @@ class InfectionDynamics():
 
 class HighLowInfectiousness(InfectionDynamics):
 
-    def compute_relative_transmissibility(self, sim):
+    def compute_infectiousness(self, sim):
         '''
         Computes relative transmissibility using a default implementation of infectiousness
         '''
@@ -57,4 +57,4 @@ class HighLowInfectiousness(InfectionDynamics):
         t            = sim.t
 
         # use the implementation of the transmission dynamics implemented in the base model in Numba
-        return cvu.high_low_transmissibility(t, date_inf, date_rec, date_dead, frac_time, load_ratio, high_cap)
+        return cvu.high_low_infectiousness(t, date_inf, date_rec, date_dead, frac_time, load_ratio, high_cap)
