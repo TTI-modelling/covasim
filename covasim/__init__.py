@@ -20,3 +20,4 @@ from .interventions import * # Depends on defaults, utils, base
 from .analysis      import * # Depends on utils, misc, interventions
 from .sim           import * # Depends on almost everything
 from .run           import * # Depends on sim
+from .infection     import * # Depends on sim
