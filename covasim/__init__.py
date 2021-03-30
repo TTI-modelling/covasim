@@ -9,6 +9,7 @@ if settings.options.verbose:
 
 # Import the actual model
 from .defaults      import * # Depends on settings
+from .infection     import * # Depends on defaults
 from .misc          import * # Depends on version
 from .parameters    import * # Depends on settings, misc
 from .utils         import * # Depends on defaults
@@ -20,4 +21,4 @@ from .interventions import * # Depends on defaults, utils, base
 from .analysis      import * # Depends on utils, misc, interventions
 from .sim           import * # Depends on almost everything
 from .run           import * # Depends on sim
-from .infection     import * # Depends on sim
+
