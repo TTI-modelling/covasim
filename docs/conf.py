@@ -27,7 +27,7 @@ else:
 
 # Rename "covasim package" to "API reference"
 filename = 'modules.rst' # This must match the Makefile
-with open(filename) as f: # Read exitsting file
+with open(filename) as f: # Read existing file
     lines = f.readlines()
 lines[0] = "API reference\n" # Blast away the existing heading and replace with this
 lines[1] = "=============\n" # Ensure the heading is the right length
@@ -231,7 +231,7 @@ texinfo_documents = [
 
 # Configure nbsphinx
 nbsphinx_kernel_name = "python"
-nbsphinx_timeout = 60 # Time in seconds; use -1 for no timeout
+nbsphinx_timeout = 90 # Time in seconds; use -1 for no timeout
 nbsphinx_execute_arguments = [
     "--InlineBackend.figure_formats={'svg', 'pdf'}",
     "--InlineBackend.rc=figure.dpi=96",

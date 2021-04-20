@@ -9,23 +9,89 @@ All notable changes to the codebase are documented in this file. Changes that ma
    :depth: 1
 
 
-~~~~~~~~~~~~~~~~~~~~
-Future release plans
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+Coming soon
+~~~~~~~~~~~
 
 These are the major improvements we are currently working on. If there is a specific bugfix or feature you would like to see, please `create an issue <https://github.com/InstituteforDiseaseModeling/covasim/issues/new/choose>`__.
 
-- Additional flexibility in plotting options (e.g. date ranges, per-plot DPI)
+- Mechanistic handling of different strains, and improved handling of vaccination, including more detailed targeting options, waning immunity, etc. This will be Covasim 3.0, which is slated for release early April.
 - Expanded tutorials (health care workers, vaccination, calibration, exercises, etc.)
-- Improved handling of vaccination, including more detailed targeting options, waning immunity, etc.
-- Mechanistic handling of different strains
 - Multi-region and geospatial support
 - Economics and costing analysis
 
 
-~~~~~~~~~~~~~~~~~~~~~~~
-Latest versions (2.0.x)
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+Latest versions (2.x)
+~~~~~~~~~~~~~~~~~~~~~
+
+Version 2.1.1 (2021-03-29)
+--------------------------
+
+This is the last release before the Covasim 3.0 launch (vaccines and variants).
+
+- **Duration updates:** All duration parameters have been updated from the literature. While most are similar to what they were before, there are some differences: in particular, durations of severe and critical disease (either to recovery or death) have increased; for example, duration from symptom onset to death has increased from 15.8±3.8 days to 18.8±7.2 days. 
+- **Performance updates:** The innermost loop of Covasim, ``cv.compute_infections()``, has been refactored to make more efficient use of array indexing. The observed difference will depend on the nature of the simulation (e.g., network type, interventions), but runs may be up to 1.5x faster now.
+- **Graphs:** People, contacts, and contacts layers now have a new method, ``to_graph()``, that will return a ``networkx`` graph (requires ``networkx`` to be installed, of course). For example, ``nx.draw(cv.Sim(pop_size=100).run().people.to_graph())`` will draw all connections between 100 default people. See ``cv.Sim.people.to_graph()`` for full documentation.
+- A bug was fixed with ``cv.TransTree.animate()`` failing in some cases.
+- ``cv.date_formatter()`` now takes ``interval``, ``start``, and ``end`` arguments.
+- Temporarily pinned ``line_profiler`` to version 3.1 due to `this issue <https://github.com/pyutils/line_profiler/issues/49>`__.
+- *Regression information*: Parameters can be restored by using the ``version`` argument when creating a sim. Specifically, the parameters for the following distributions (all lognormal) have been changed as follows::
+
+    exp2inf:  μ =  4.6 →  4.5, σ = 4.8 → 1.5
+    inf2sym:  μ =  1.0 →  1.1, σ = 0.9 → 0.9
+    sev2crit: μ =  3.0 →  1.5, σ = 7.4 → 2.0
+    sev2rec:  μ = 14.0 → 18.1, σ = 2.4 → 6.3
+    crit2rec: μ = 14.0 → 18.1, σ = 2.4 → 6.3
+    crit2die: μ =  6.2 → 10.7, σ = 1.7 → 4.8
+
+- *GitHub info*: PR `887 <https://github.com/amath-idm/covasim/pull/887>`__
+
+
+Version 2.1.0 (2021-03-23)
+--------------------------
+
+Highlights
+^^^^^^^^^^
+- **Updated lognormal distributions**: Lognormal distributions had been inadvertently using the variance instead of the standard deviation as the second parameter, resulting in too small variance. This has been fixed. This has a small but nonzero impact on the results (e.g. with default parameters, the time to peak infections is about 5-10% sooner now).
+- **Expanded plotting features**: You now have much more flexibility with passing arguments to ``sim.plot()`` and other plotting functions, such as to temporarily set global Matplotlib options (such as DPI), modify axis styles and limits, etc. For example, you can now do things like this: ``cv.Sim().run().plot(dpi=150, rotation=30, start_day='2020-03-01', end_day=55, interval=7)``.
+- **Improved analyzers**: Transmission trees can be computed 20 times faster, Fit objects are more forgiving for data problems, and analyzers can now be exported to JSON.
+
+Bugfixes
+^^^^^^^^
+- Previously, the lognormal distributions were unintentionally using the variance of the distribution, instead of the standard deviation, as the second parameter. This makes a small difference to the results (slightly higher transmission due to the increased variance). Old simulations that are loaded will automatically have their parameters updated so they give the same results; however, new simulations will now give slightly different results than they did previously. (Thanks to Ace Thompson for identifying this.)
+- If a results object has low and high values, these are now exported to JSON (and also to Excel).
+- MultiSim and Scenarios ``run.()`` methods now return themselves, as Sim does. This means that just as you can do ``sim.run().plot()``, you can also now do ``msim.run().plot()``.
+
+Plotting and options
+^^^^^^^^^^^^^^^^^^^^
+- Standard plots now accept keyword arguments that will be passed around to all available subfunctions. For example, if you specify ``dpi=150``, Covasim knows that this is a Matplotlib setting and will configure it accordingly; likewise things like ``bottom`` (only for axes), ``frameon`` (only for legends), etc. If you pass an ambiguous keyword (e.g. ``alpha``, which is used for line and scatter plots), it will only be used for the *first* one.
+- There is a new keyword argument, ``date_args``, that will format the x-axis: options include ``dateformat`` (e.g. ``%Y-%m-%d``), ``rotation`` (to avoid label collisions), and ``start_day`` and ``end_day``.
+- Default plotting styles have updated, including less intrusive lines for interventions.
+
+Other changes
+^^^^^^^^^^^^^
+- MultiSims now have ``to_json()`` and ``to_excel()`` methods, which are shortcuts for calling these methods on the base sim.
+- If no label is supplied to an analyzer or intervention, it will use its class name (e.g. the default label for ``cv.change_beta`` is ``'change_beta'``).
+- Analyzers now have a ``to_json()`` method.
+- The ``cv.Fit`` and ``cv.TransTree`` classes now derive from ``Analyzer``, giving them some new methods and attributes.
+- ``cv.sim.compute_fit()`` has a new keyword argument, ``die``, that will print warnings rather than raise exceptions if no matching data is found. Exceptions are now caught and helpful error messages are provided (e.g., if dates don't match).
+- The algorithm for ``cv.TransTree`` has been rewritten, and now runs 20x as fast. The detailed transmission tree, in ``tt.detailed``, is now a pandas dataframe rather than a list of dictionaries. To restore something close to the previous version, use ``tt.detailed.to_dict('records')``.
+- A data file with an integer rather than date "date" index can now be loaded; these will be counted relative to the simulation's start day.
+- ``cv.load()`` has two new keyword arguments, ``update`` and ``verbose``, than are passed to ``cv.migrate()``.
+- ``cv.options`` has new a ``get_default()`` method which returns the value of that parameter when Covasim was first loaded.
+
+Documentation and testing
+^^^^^^^^^^^^^^^^^^^^^^^^^
+- An extra tutorial has been added on "Deployment", covering how to use it with `Dask <https://dask.org/>`__ and for using Covasim with interactive notebooks and websites. 
+- Tutorials 7 and 10 have been updated so they work on Windows machines.
+- Additional unit tests have been written to check the statistical properties of the sampling algorithms.
+
+Regression information
+^^^^^^^^^^^^^^^^^^^^^^
+- To restore previous behavior for a simulation (i.e. using variance instead of standard deviation for lognormal distributions), call ``cv.misc.migrate_lognormal(sim)``. This is done automatically when loading a saved sim from disk. To undo a migration, type ``cv.misc.migrate_lognormal(sim, revert=True)``. What this function does is loop over the duration parameters and replace ``par2`` with its square root. If you have used lognormal distributions elsewhere, you will need to update them manually.
+- Code that was designed to parse transmission trees will likely need to be revised. The object ``tt.detailed`` is now a dataframe; calling ``tt.detailed.to_dict('records')`` will bring it very close to what it used to be, with the exception that for a given row, ``'t'`` and ``'s'`` used to be nested dictionaries, whereas now they are prefixes. For example, whereas before the 45th person's source's "is quarantined" state would have been ``tt.detailed[45]['s']['is_quarantined']``, it is now ``tt.detailed.iloc[45]['src_is_quarantined']``.
+- *GitHub info*: PR `859 <https://github.com/amath-idm/covasim/pull/859>`__
 
 
 Version 2.0.4 (2021-03-19)
