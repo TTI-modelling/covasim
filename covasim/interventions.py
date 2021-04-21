@@ -868,7 +868,7 @@ class test_prob(Intervention):
         test_inds = cvu.true(cvu.binomial_arr(test_probs)) # Finally, calculate who actually tests
 
         # Actually test people
-        sim.people.test_specificity(test_inds, test_sensitivity=self.sensitivity, loss_prob=self.loss_prob, test_delay=self.test_delay, test_specificity = self.test_specificity) # Actually test people
+        sim.people.test_specificity(test_inds, test_sensitivity=self.sensitivity, loss_prob=self.loss_prob, test_delay=self.test_delay, test_specif = self.test_specificity) # Actually test people
         sim.results['new_tests'][t] += int(len(test_inds)*sim['pop_scale']/sim.rescale_vec[t]) # If we're using dynamic scaling, we have to scale by pop_scale, not rescale_vec
 
         return test_inds
