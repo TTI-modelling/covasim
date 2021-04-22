@@ -443,7 +443,7 @@ Version 1.4.2 (2020-05-30)
 - Updated the default number of household contacts from 2.7 to 2.0 for ``hybrid``, and changed ``cv.poisson()`` to no longer cast to an integer. These two changes cancel out, so default behavior has not changed.
 - Updated the calculation of contacts from household sizes (now uses household size - 1, to remove self-connections).
 - Added ``cv.MultiSim.load()``.
-- Added Numba caching to ``compute_viral_load()``, reducing overall Covasim load time by roughly 50%.
+- Added Numba caching to ``compute_relative_transmissibility()``, reducing overall Covasim load time by roughly 50%.
 - Added an option for parallel execution of Numba functions (see ``utils.py``); although this significantly improves performance (20-30%), it results in non-deterministic results, so is disabled by default.
 - Changed ``People`` to use its own contact layer keys rather than those taken from the parameters.
 - Improved plotting and corrected minor bugs in age histogram and model fit analyzers.

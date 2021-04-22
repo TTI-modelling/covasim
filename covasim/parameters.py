@@ -47,6 +47,9 @@ def make_pars(set_prognoses=False, prog_by_age=True, version=None, **kwargs):
     pars['rescale_threshold'] = 0.05 # Fraction susceptible population that will trigger rescaling if rescaling
     pars['rescale_factor']    = 1.2  # Factor by which the population is rescaled on each step
 
+    # test sensitivity profile parameters
+    pars['test_sensitivity_profiles'] = {}  # pass empty dictionary of test sensitivity profiles that the simulation can use
+
     # Basic disease transmission
     pars['beta']        = 0.016 # Beta per symptomatic contact; absolute value, calibrated
     pars['contacts']    = None  # The number of contacts per layer; set by reset_layer_pars() below
@@ -55,6 +58,7 @@ def make_pars(set_prognoses=False, prog_by_age=True, version=None, **kwargs):
     pars['n_imports']   = 0     # Average daily number of imported cases (actual number is drawn from Poisson distribution)
     pars['beta_dist']   = dict(dist='neg_binomial', par1=1.0, par2=0.45, step=0.01) # Distribution to draw individual level transmissibility; dispersion from https://www.researchsquare.com/article/rs-29548/v1
     pars['viral_dist']  = dict(frac_time=0.3, load_ratio=2, high_cap=4) # The time varying viral load (transmissibility); estimated from Lescure 2020, Lancet, https://doi.org/10.1016/S1473-3099(20)30200-0
+    pars['infection_dynamics'] = 'default' # unless otherwise specified, used the infection dynamics defined by the above model
 
     # Efficacy of protection measures
     pars['asymp_factor'] = 1.0 # Multiply beta by this factor for asymptomatic cases; no statistically significant difference in transmissibility: https://www.sciencedirect.com/science/article/pii/S1201971220302502
@@ -90,6 +94,7 @@ def make_pars(set_prognoses=False, prog_by_age=True, version=None, **kwargs):
     pars['analyzers']     = []   # Custom analysis functions; populated by the user
     pars['timelimit']     = None # Time limit for the simulation (seconds)
     pars['stopping_func'] = None # A function to call to stop the sim partway through
+
 
     # Health system parameters
     pars['n_beds_hosp']    = None # The number of hospital (adult acute care) beds available for severely ill patients (default is no constraint)
