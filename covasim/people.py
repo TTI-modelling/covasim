@@ -467,7 +467,7 @@ class People(cvb.BasePeople):
         return
 
 
-    def test_specificity(self, inds, test_sensitivity=1.0, loss_prob=0.0, test_delay=0, test_specificity = 1.0):
+    def test_specificity(self, inds, test_sensitivity=1.0, loss_prob=0.0, test_delay=0, test_specif = 1.0):
         '''
         Method to test people with false positives. Typically not to be called by the user directly;
         see the test_num() and test_prob() interventions.
@@ -488,9 +488,8 @@ class People(cvb.BasePeople):
         is_inf_pos    = is_infectious[pos_test]
 
         is_well = cvu.ifalsei(self.infectious, inds)
-        pos_test = cvu.n_binomial(1-test_specificity, len(is_well))
+        pos_test = cvu.n_binomial(1-test_specif, len(is_well))
         is_well_pos = is_well[pos_test]
-
 
         all_positives = np.unique(np.concatenate([is_inf_pos,is_well_pos]))
         not_lost      = cvu.n_binomial(1.0-loss_prob, len(all_positives))
