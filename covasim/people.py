@@ -483,6 +483,9 @@ class People(cvb.BasePeople):
         self.tested[inds] = True
         self.date_tested[inds] = self.t # Only keep the last time they tested
 
+        #bad_swab = cvu.n_binomial(swab_error_rate, len(inds))
+        #bad_swab_negatives = inds[bad_swab]
+
         is_infectious = cvu.itruei(self.infectious, inds)
         pos_test      = cvu.n_binomial(test_sensitivity, len(is_infectious))
         is_inf_pos    = is_infectious[pos_test]
@@ -494,6 +497,7 @@ class People(cvb.BasePeople):
         all_positives = np.unique(np.concatenate([is_inf_pos,is_well_pos]))
         not_lost      = cvu.n_binomial(1.0-loss_prob, len(all_positives))
         final_inds    = all_positives[not_lost]
+        #final_inds = final_inds[~np.in1d(final_inds,bad_swab_negatives)]
 
         # Store the date the person will be diagnosed, as well as the date they took the test which will come back positive
         self.date_diagnosed[final_inds] = self.t + test_delay

@@ -777,6 +777,7 @@ class test_prob(Intervention):
         test_delay       (int)       : days for test result to be known (default 0, i.e. results available instantly)
         start_day        (int)       : day the intervention starts (default: 0, i.e. first day of the simulation)
         end_day          (int)       : day the intervention ends (default: no end)
+        specificity      (float)     : test specificity (default 100%, i.e. no false positives)
         kwargs           (dict)      : passed to Intervention()
 
     **Examples**::
