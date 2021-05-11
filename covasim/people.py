@@ -44,7 +44,7 @@ class People(cvb.BasePeople):
         #object = GetTestSensitivityCurve ('./data/pcr_pars.csv', './data/lfa_pars.csv')
         #self.lfa = object.lfa_prob_positive
         #self.pcr=object.pcr_prob_positive
-        
+
 
         # Handle pars and population size
         if sc.isnumber(pars): # Interpret as a population size
@@ -107,6 +107,9 @@ class People(cvb.BasePeople):
         self._pending_quarantine = defaultdict(list)  # Internal cache to record people that need to be quarantined on each timestep {t:(person, quarantine_end_day)}
 
         self._pending_isolation = defaultdict(list)
+
+        self.wrong_quarantine = np.full(181, 0, dtype=cvd.default_int)
+        self.testing_to_release = np.full(181,0,dtype=cvd.default_int)
         return
 
 
@@ -458,12 +461,12 @@ class People(cvb.BasePeople):
 
         return n_infections # For incrementing counters
 
-        
+
     def test_custom_profile(self, inds, test_sensitivity_profile_key: str):
         """
-        Works similarly to the standard testing function, with the exception that it 
+        Works similarly to the standard testing function, with the exception that it
         calls a test_sensitivity_profile. This allows different types of tests to be used
-        in the same simulation. 
+        in the same simulation.
 
         Test sensitivity profiles need to be passed as part of pars, in a dictionary format.
 
@@ -478,57 +481,6 @@ class People(cvb.BasePeople):
 
         profile.test(self, inds)
 
-        return
-
-    def TestTimeVaryingSensitivity(self, inds, loss_prob=0.0, test_delay=0,test_type='pcr'): 
-        '''
-        Method to test people. Typically not to be called by the user directly;
-        see the test_num() and test_prob() interventions.
-
-        Args:
-            inds: indices of who to test
-            test_type (str): options are 'pcr' (default) and 'lfa';different tests have different sensitivity curves
-            loss_prob (float): probability of loss to follow-up
-            test_delay (int): number of days before test results are ready
-        '''
-        inds = np.unique(inds)
-        self.tested[inds] = True
-        self.date_tested[inds] = self.t # Only keep the last time they tested
-        is_infectious = cvu.itruei(self.infectious, inds)
-        self.infec_time       = cvd.default_int(self.t - self.date_infectious[is_infectious])
-
-        # for each individual being tested, lets get the probability that they will test positive
-        if test_type is 'pcr':
-            prob_test_positive = [
-                self.pcr(infectious_age)
-                for infectious_age
-                in self.infec_time
-            ]
-        elif test_type is 'lfa':
-            prob_test_positive = [
-                self.lfa(infectious_age)
-                for infectious_age
-                in self.infec_time
-            ]
-        else:
-            # todo: add a proper error here
-            print('something went wrong')
-
-        # now, we use the covasim binomial_arr function
-        # this function performs lots of binomial trials with different probabilities
-        # so you pass a vector [0.1, 0.3, 0.5] and it performs 3 trials
-        # it returns a random [False, True, True] style vector 
-        pos_test      = cvu.binomial_arr(prob_arr=prob_test_positive)
-        print(f'There were {sum(pos_test)} positive tests')
-        is_inf_pos    = is_infectious[pos_test]
-        
-        not_diagnosed = is_inf_pos[np.isnan(self.date_diagnosed[is_inf_pos])]
-        not_lost      = cvu.n_binomial(1.0-loss_prob, len(not_diagnosed))
-        final_inds    = not_diagnosed[not_lost]
-        
-        self.date_diagnosed[final_inds] = self.t + test_delay
-        self.date_pos_test[final_inds] = self.t
-        
         return
 
 
