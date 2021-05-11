@@ -396,8 +396,5 @@ def get_default_plots(which='default', kind='sim', sim=None):
     else: # pragma: no cover
         errormsg = f'The choice which="{which}" is not supported: choices are "default", "overview", "all", "strain", "overview-strain", or "seir"'
         raise ValueError(errormsg)
-<<<<<<< HEAD
-=======
 
->>>>>>> upstream/master
     return plots
