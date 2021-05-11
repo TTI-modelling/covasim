@@ -36,15 +36,15 @@ Covasim has been used for analyses in over a dozen countries, both to inform pol
 
 2. **Determining the optimal strategy for reopening schools, the impact of test and trace interventions, and the risk of occurrence of a second COVID-19 epidemic wave in the UK: a modelling study**. Panovska-Griffiths J, Kerr CC, Stuart RM, Mistry D, Klein DJ, Viner R, Bonnell C (2020-08-03). *Lancet Child and Adolescent Health* S2352-4642(20) 30250-9. doi: https://doi.org/10.1016/S2352-4642(20)30250-9.
 
-3. **Modelling the impact of reducing control measures on the COVID-19 pandemic in a low transmission setting**. Scott N, Palmer A, Delport D, Abeysuriya RG, Stuart RM, Kerr CC, Mistry D, Klein DJ, Sacks-Davis R, Heath K, Hainsworth S, Pedrana A, Stoove M, Wilson DP, Hellard M (in press; accepted 2020-09-02). *Medical Journal of Australia* [`Preprint <https://www.mja.com.au/journal/2020/modelling-impact-reducing-control-measures-covid-19-pandemic-low-transmission-setting>`__]; doi: https://doi.org/10.1101/2020.06.11.20127027.
+3. **Estimating and mitigating the risk of COVID-19 epidemic rebound associated with reopening of international borders in Vietnam: a modelling study**. Pham QD, Stuart RM, Nguyen TV, Luong QC, Tran DQ, Phan LT, Dang TQ, Tran DN, Mistry D, Klein DJ, Abeysuriya RG, Oron AP, Kerr CC (2021-04-12). *Lancet Global Health* S2214-109X(21) 00103-0; doi: https://doi.org/10.1016/S2214-109X(21)00103-0.
 
-4. **Lessons learned from Vietnam's COVID-19 response: the role of adaptive behaviour change and testing in epidemic control**. Pham QD, Stuart RM, Nguyen TV, Luong QC, Tran DQ, Phan LT, Dang TQ, Tran DN, Mistry D, Klein DJ, Abeysuriya RG, Oron AP, Kerr CC (in press; accepted 2021-02-25). *Lancet Global Health*; doi: https://doi.org/10.1101/2020.12.18.20248454.
+4. **Modelling the impact of reducing control measures on the COVID-19 pandemic in a low transmission setting**. Scott N, Palmer A, Delport D, Abeysuriya RG, Stuart RM, Kerr CC, Mistry D, Klein DJ, Sacks-Davis R, Heath K, Hainsworth S, Pedrana A, Stoove M, Wilson DP, Hellard M (in press; accepted 2020-09-02). *Medical Journal of Australia* [`Preprint <https://www.mja.com.au/journal/2020/modelling-impact-reducing-control-measures-covid-19-pandemic-low-transmission-setting>`__]; doi: https://doi.org/10.1101/2020.06.11.20127027.
 
-5. **The role of masks, testing and contact tracing in preventing COVID-19 resurgences: a case study from New South Wales, Australia**. Stuart RM, Abeysuriya RG, Kerr CC, Mistry D, Klein DJ, Gray R, Hellard M, Scott N (under review; posted 2020-09-03). *medRxiv* 2020.09.02.20186742; doi: https://doi.org/10.1101/2020.09.02.20186742.
+5. **The role of masks, testing and contact tracing in preventing COVID-19 resurgences: a case study from New South Wales, Australia**. Stuart RM, Abeysuriya RG, Kerr CC, Mistry D, Klein DJ, Gray R, Hellard M, Scott N (in press; accepted 2021-03-19). *BMJ Open*; doi: https://doi.org/10.1101/2020.09.02.20186742.
 
-6. **Schools are not islands: Balancing COVID-19 risk and educational benefits using structural and temporal countermeasures**. Cohen JA, Mistry D, Kerr CC, Klein DJ (under review; posted 2020-09-10). *medRxiv* 2020.09.08.20190942; doi: https://doi.org/10.1101/2020.09.08.20190942.
+6. **The potential contribution of face coverings to the control of SARS-CoV-2 transmission in schools and broader society in the UK: a modelling study**. Panovska-Griffiths J, Kerr CC, Waites W, Stuart RM, Mistry D, Foster D, Klein DJ, Viner R, Bonnell C (in press; accepted 2021-04-08). *Nature Scientific Reports*; doi: https://doi.org/10.1101/2020.09.28.20202937.
 
-7. **The potential contribution of face coverings to the control of SARS-CoV-2 transmission in schools and broader society in the UK: a modelling study**. Panovska-Griffiths J, Kerr CC, Waites W, Stuart RM, Mistry D, Foster D, Klein DJ, Viner R, Bonnell C (under review; posted 2020-10-08). *medRxiv* 2020.09.28.20202937; doi: https://doi.org/10.1101/2020.09.28.20202937.
+7. **Schools are not islands: Balancing COVID-19 risk and educational benefits using structural and temporal countermeasures**. Cohen JA, Mistry D, Kerr CC, Klein DJ (under review; posted 2020-09-10). *medRxiv* 2020.09.08.20190942; doi: https://doi.org/10.1101/2020.09.08.20190942.
 
 8. **COVID-19 reopening strategies at the county level in the face of uncertainty: Multiple Models for Outbreak Decision Support**. Shea K, Borchering RK, Probert WJM, et al. (under review; posted 2020-11-05). *medRxiv* 2020.11.03.20225409; doi: https://doi.org/10.1101/2020.11.03.20225409.
 
@@ -89,11 +89,11 @@ If you would rather download the source code rather than using the ``pip`` packa
 
     *   For normal installation (recommended)::
 
-          python setup.py develop
+          pip install -e .
 
     *   To install Covasim and optional dependencies (be aware this may fail since it relies on nonstandard packages)::
 
-          python setup.py develop full
+          pip install -e .[full]
 
     The module should then be importable via ``import covasim as cv``.
 
@@ -139,6 +139,7 @@ The structure of the ``covasim`` folder is as follows, roughly in the order in w
 * ``people.py``: The ``People`` class, for handling updates of state for each person.
 * ``population.py``: Functions for creating populations of people, including age, contacts, etc.
 * ``interventions.py``: The ``Intervention`` class, for adding interventions and dynamically modifying parameters, and classes for each of the specific interventions derived from it.
+* ``immunity.py``: The ``strain`` class, and functions for computing waning immunity and neutralizing antibodies.
 * ``sim.py``: The ``Sim`` class, which performs most of the heavy lifting: initializing the model, running, and plotting.
 * ``run.py``: Functions for running simulations (e.g. parallel runs and the ``Scenarios`` and ``MultiSim`` classes).
 * ``analysis.py``: The ``Analyzers`` class (for performing analyses on the sim while it's running), the ``Fit`` class (for calculating the fit between the model and the data), the ``TransTree`` class, and other classes and functions for analyzing simulations.

@@ -11,7 +11,7 @@ from . import utils as cvu
 from . import misc as cvm
 from . import data as cvdata
 from . import defaults as cvd
-from . import parameters as cvpars
+from . import parameters as cvpar
 from . import people as cvppl
 
 
@@ -24,11 +24,11 @@ __all__ = ['make_people', 'make_randpop', 'make_random_contacts',
 def make_people(sim, popdict=None, save_pop=False, popfile=None, die=True, reset=False, verbose=None, **kwargs):
     '''
     Make the actual people for the simulation. Usually called via sim.initialize(),
-    not directly by the user.
+    but can be called directly by the user.
 
     Args:
-        sim      (Sim)  : the simulation object
-        popdict  (dict) : if supplied, use this population dictionary rather than generate a new one
+        sim      (Sim)  : the simulation object; population parameters are taken from the sim object
+        popdict  (dict) : if supplied, use this population dictionary instead of generating a new one
         save_pop (bool) : whether to save the population to disk
         popfile  (bool) : if so, the filename to save to
         die      (bool) : whether or not to fail if synthetic populations are requested but not available
@@ -83,7 +83,7 @@ def make_people(sim, popdict=None, save_pop=False, popfile=None, die=True, reset
 
     # Ensure prognoses are set
     if sim['prognoses'] is None:
-        sim['prognoses'] = cvpars.get_prognoses(sim['prog_by_age'], version=sim._default_ver)
+        sim['prognoses'] = cvpar.get_prognoses(sim['prog_by_age'], version=sim._default_ver)
 
     # Actually create the people
     people = cvppl.People(sim.pars, uid=popdict['uid'], age=popdict['age'], sex=popdict['sex'], contacts=popdict['contacts']) # List for storing the people
