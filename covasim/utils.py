@@ -37,7 +37,7 @@ cache = cvo.numba_cache # Turning this off can help switching parallelization op
 #%% The core Covasim functions -- compute the infections
 
 @nb.njit(                  (nbint, nbfloat[:], nbfloat[:],     nbfloat[:], nbfloat,   nbfloat,    nbfloat), cache=cache, parallel=safe_parallel)
-def high_low_infectiousness(t,     time_start, time_recovered, time_dead,  frac_time, load_ratio, high_cap): # pragma: no cover
+def compute_viral_load(t,     time_start, time_recovered, time_dead,  frac_time, load_ratio, high_cap): # pragma: no cover
     '''
     Calculate relative transmissibility for time t. Includes time varying
     viral load, pre/asymptomatic factor, diagnosis factor, etc.

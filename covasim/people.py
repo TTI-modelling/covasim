@@ -122,8 +122,10 @@ class People(cvb.BasePeople):
 
         self._pending_isolation = defaultdict(list)
 
-        self.wrong_quarantine = np.full(181, 0, dtype=cvd.default_int)
-        self.testing_to_release = np.full(181,0,dtype=cvd.default_int)
+        self.new_wrong_quarantines = np.full(181, 0, dtype=cvd.default_int)
+        self.current_wrong_quarantine = np.full(self.pars['pop_size'], False, dtype=bool)
+        self.tests_remaining = np.full(self.pars['pop_size'], np.nan)
+
         return
 
 
@@ -821,6 +823,7 @@ class People(cvb.BasePeople):
                 'date_severe'         : 'developed severe symptoms and needed hospitalization',
                 'date_symptomatic'    : 'became symptomatic',
                 'date_tested'         : 'was tested for COVID',
+                "date_end_diagnosis"  : "no longer isolating"
             }
 
             for attribute, message in dates.items():

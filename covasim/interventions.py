@@ -1023,14 +1023,7 @@ class contact_tracing(Intervention):
             return
 
         trace_inds = self.select_cases(sim)
-        true_pos_inds = np.intersect1d(trace_inds, cvu.true(sim.people.infectious))
-        false_pos_inds = np.intersect1d(trace_inds, cvu.false(sim.people.infectious))
-        false_pos_contacts = self.identify_contacts(sim, false_pos_inds)
-        true_pos_contacts = self.identify_contacts(sim, true_pos_inds)
-        keys = false_pos_contacts.keys() | true_pos_contacts.keys()
-        contacts = {key: np.fromiter(np.union1d(false_pos_contacts.get(key,[]), true_pos_contacts.get(key, [])), dtype=cvd.default_int) for key in keys}
-        wrong_contacts = {key: np.setdiff1d(contacts.get(key,[]), true_pos_contacts.get(key, [])) for key in keys}
-        self.save_wrong_contacts(sim, wrong_contacts)
+        contacts = self.identify_contacts(sim, trace_inds)
         self.notify_contacts(sim, contacts)
         return contacts
 
@@ -1106,14 +1099,6 @@ class contact_tracing(Intervention):
             sim.people.schedule_quarantine(contact_inds, start_date=sim.t + trace_time, period=self.quar_period - trace_time)  # Schedule quarantine for the notified people to start on the date they will be notified
         return
 
-
-    def save_wrong_contacts(self, sim, contacts):
-
-        for trace_time, contact_inds in contacts.items():
-            if sim.t + trace_time > 180:
-                continue
-                
-            sim.people.wrong_quarantine[int(sim.t + trace_time)] += len(contact_inds)
 
 
 
@@ -1419,4 +1404,3 @@ class vaccinate(Intervention):
                     cvi.init_nab(sim.people, vaccinees, prior_inf=False)
 
         return
-
