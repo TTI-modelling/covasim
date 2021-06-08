@@ -116,7 +116,7 @@ class Sim(cvb.BaseSim):
         self.init_strains() # Initialize the strains
         self.init_immunity() # initialize information about immunity (if use_waning=True)
         self.init_results() # After initializing the strain, create the results structure
-        self.init_people(save_pop=self.save_pop, load_pop=self.load_pop, popfile=self.popfile, reset=reset, **kwargs) # Create all the people (slow)
+        self.init_people(save_pop=self.save_pop, load_pop=self.load_pop, popfile=self.popfile, reset=reset, contact_matrices = self.pars["contact_matrices"], **kwargs) # Create all the people (slow)
         self.validate_layer_pars() # Once the population is initialized, validate the layer parameters again
         self.init_infection_dynamics() # Initialize the infection dynamics
         self.init_interventions() # Initialize the interventions
@@ -250,7 +250,7 @@ class Sim(cvb.BaseSim):
                 raise ValueError(errormsg)
 
         # Handle population data
-        popdata_choices = ['random', 'hybrid', 'clustered', 'synthpops']
+        popdata_choices = ['random', 'hybrid', 'clustered', 'synthpops', 'matrix']
         choice = self['pop_type']
         if choice and choice not in popdata_choices: # pragma: no cover
             choicestr = ', '.join(popdata_choices)

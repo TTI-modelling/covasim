@@ -137,6 +137,8 @@ def make_pars(set_prognoses=False, prog_by_age=True, version=None, **kwargs):
         if sp in pars.keys():
             pars['strain_pars']['wild'][sp] = pars[sp]
 
+    pars["contact_matrices"] = {}
+
     # Update with any supplied parameter values and generate things that need to be generated
     pars.update(kwargs)
     reset_layer_pars(pars)
@@ -202,6 +204,7 @@ def reset_layer_pars(pars, layer_keys=None, force=False):
                   quar_factor=0.3
     )
     layer_defaults['synthpops'] = sc.dcp(layer_defaults['hybrid'])
+    layer_defaults['matrix'] = sc.dcp(layer_defaults['hybrid'])
     for key,val in l_pars.items():
         layer_defaults['synthpops'][key]['l'] = val
 

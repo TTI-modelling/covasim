@@ -70,7 +70,7 @@ def make_people(sim, popdict=None, save_pop=False, popfile=None, die=True, reset
         sim.popdict = None # Once loaded, remove
     elif popdict is None: # Main use case: no popdict is supplied
         # Create the population
-        if pop_type in ['random', 'clustered', 'hybrid']:
+        if pop_type in ['random', 'clustered', 'hybrid', "matrix"]:
             popdict = make_randpop(sim, microstructure=pop_type, **kwargs)
         elif pop_type == 'synthpops':
             popdict = make_synthpop(sim, **kwargs)
@@ -104,7 +104,7 @@ def make_people(sim, popdict=None, save_pop=False, popfile=None, die=True, reset
     return people
 
 
-def make_randpop(sim, use_age_data=True, use_household_data=True, sex_ratio=0.5, microstructure=False):
+def make_randpop(sim, use_age_data=True, use_household_data=True, sex_ratio=0.5, microstructure=False, **kwargs):
     '''
     Make a random population, with contacts.
 
@@ -173,6 +173,8 @@ def make_randpop(sim, use_age_data=True, use_household_data=True, sex_ratio=0.5,
     if   microstructure == 'random':    contacts, layer_keys    = make_random_contacts(pop_size, sim['contacts'])
     elif microstructure == 'clustered': contacts, layer_keys, _ = make_microstructured_contacts(pop_size, sim['contacts'])
     elif microstructure == 'hybrid':    contacts, layer_keys, _ = make_hybrid_contacts(pop_size, ages, sim['contacts'])
+    elif microstructure == "matrix":
+        contacts, layer_keys = make_contact_matrix_contacts(pop_size, ages, sim["contacts"], kwargs["contact_matrices"])
     else: # pragma: no cover
         errormsg = f'Microstructure type "{microstructure}" not found; choices are random, clustered, or hybrid'
         raise NotImplementedError(errormsg)
@@ -404,3 +406,77 @@ def make_synthpop(sim=None, population=None, layer_mapping=None, community_conta
     popdict['layer_keys'] = list(layer_mapping.values())
 
     return popdict
+
+
+def check_contacts(pop_size, ages, contacts, contact_matrices, contacts_list):
+
+    mat_keys = contact_matrices.keys()
+
+    for key in mat_keys:
+        age_bins, n_contacts = contact_matrices[key]
+        print(f"LAYER: [{key}]")
+        for i, _ in enumerate(age_bins):
+            for j, _ in enumerate(age_bins):
+                print(n_contacts[i][j],end=" ")
+            print()
+
+        for i,(lower, upper) in enumerate(age_bins):
+            s_inds = sc.findinds((ages >= lower) * (ages < upper))
+            s_bin_size = len(s_inds)
+            for j, (target_lower, target_upper) in enumerate(age_bins):
+                t_inds = sc.findinds((ages >= target_lower) * (ages < target_upper))
+                counter = 0
+                for ind in s_inds:
+                    cs = contacts_list[ind][key]
+                    counter += len(np.intersect1d(t_inds, cs))
+                print(f"{counter/s_bin_size:.2f}",end=" ")
+            print()
+
+
+
+
+def make_contact_matrix_contacts(pop_size, ages, contacts_layer, contact_matrices, overshoot = 1.5):
+
+    #sc.tic()
+
+    layer_keys = ['h', 's', 'w', 'c']
+    mat_keys = contact_matrices.keys()
+    contacts_list = [{key:[] for key in layer_keys} for i in range(pop_size)]
+
+    for key in layer_keys:
+        if key not in mat_keys:
+            if key == "h":
+                contacts, _, _ = make_microstructured_contacts(pop_size, {key:contacts_layer[key]})
+            else:
+                contacts, _ = make_random_contacts(pop_size, {key:contacts_layer[key]})
+            for i in range(pop_size):
+                contacts_list[i][key] = contacts[i][key]
+            continue
+
+        age_bins, n_contacts = contact_matrices[key]
+        for i,(lower, upper) in enumerate(age_bins):
+            s_inds = sc.findinds((ages >= lower) * (ages < upper))
+            s_bin_size = len(s_inds)
+            for j, (target_lower, target_upper) in enumerate(age_bins):
+                t_inds = sc.findinds((ages >= target_lower) * (ages < target_upper))
+                t_bin_size = len(t_inds)
+                if t_bin_size == 0:
+                    continue
+                bin_avg_contacts = n_contacts[i][j]
+                contacts_to_gen = int(s_bin_size * bin_avg_contacts * overshoot)
+                bin_contacts = cvu.choose_r(max_n=t_bin_size, n=contacts_to_gen)
+                p_count = cvu.n_poisson(bin_avg_contacts, s_bin_size)
+                p_count = np.array((p_count/2.0).round(), dtype=cvd.default_int)
+                count = 0
+                contacts = []
+                for p in range(s_bin_size):
+                    contacts.append(bin_contacts[count:count+p_count[p]]) # Assign people
+                    count += p_count[p]
+                for k,ind in enumerate(s_inds):
+                    contacts_list[ind][key].extend(t_inds[contacts[k]])
+
+    #sc.toc(label="Pop size: {}".format(pop_size))
+
+    #check_contacts(pop_size, ages, contacts, contact_matrices, contacts_list)
+
+    return contacts_list, layer_keys
