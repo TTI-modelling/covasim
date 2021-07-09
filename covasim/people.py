@@ -122,7 +122,7 @@ class People(cvb.BasePeople):
 
         self._pending_isolation = defaultdict(list)
 
-        self.new_wrong_quarantines = np.full(181, 0, dtype=cvd.default_int)
+        #self.new_wrong_quarantines = np.full(181, 0, dtype=cvd.default_int)
         self.current_wrong_quarantine = np.full(self.pars['pop_size'], False, dtype=bool)
         self.tests_remaining = np.full(self.pars['pop_size'], np.nan)
 

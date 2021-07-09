@@ -169,7 +169,8 @@ result_flows = {
     'diagnoses':    'diagnoses',
     'quarantined':  'quarantined people',
     'vaccinations': 'vaccinations',
-    'vaccinated':   'vaccinated people'
+    'vaccinated':   'vaccinated people',
+    'wrong_quarantines': "people quarantined from false positive"
 }
 
 result_flows_by_strain = {
