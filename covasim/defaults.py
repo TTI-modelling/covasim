@@ -68,6 +68,7 @@ class PeopleMeta(sc.prettyobj):
             'known_contact',
             'quarantined',
             'vaccinated',
+            'ili'
         ]
 
         # Strain states -- these are ints

@@ -175,6 +175,8 @@ def make_randpop(sim, use_age_data=True, use_household_data=True, sex_ratio=0.5,
     elif microstructure == 'hybrid':    contacts, layer_keys, _ = make_hybrid_contacts(pop_size, ages, sim['contacts'])
     elif microstructure == "matrix":
         contacts, layer_keys = make_contact_matrix_contacts(pop_size, ages, sim["contacts"], kwargs["contact_matrices"])
+    elif microstructure == "settings":
+        contacts, layer_keys = make_settings_contacts(pop_size, ages, kwargs["contact_matrices"], kwargs["setting_keys"], kwargs["setting_contact_mats"], kwargs["nodes_per_setting"], kwargs["settings_cooccurrence"])
     else: # pragma: no cover
         errormsg = f'Microstructure type "{microstructure}" not found; choices are random, clustered, or hybrid'
         raise NotImplementedError(errormsg)
@@ -492,7 +494,7 @@ def layer_from_contact_matrix(pop_size, ages, age_bins, contact_matrix, overshoo
     return contacts_list
 
 
-def contacts_from_settings(pop_size, ages, contact_matrices, setting_keys, setting_contact_mats, nodes_per_setting, settings_cooccurrence, overshoot = 1.5):
+def make_settings_contacts(pop_size, ages, contact_matrices, setting_keys, setting_contact_mats, nodes_per_setting, settings_cooccurrence, overshoot = 1.5):
 
     layer_keys = ['h', 's', 'w', 'c']
     mat_keys = contact_matrices.keys()
