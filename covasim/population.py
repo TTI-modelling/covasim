@@ -465,7 +465,7 @@ def make_contact_matrix_contacts(pop_size, ages, contacts_layer, contact_matrice
     return contacts_list, layer_keys
 
 
-def layer_from_contact_matrix(pop_size, ages, age_bins, contact_matrix, overshoot = 1.5):
+def layer_from_contact_matrix(pop_size, ages, age_bins, n_contacts, overshoot = 1.5):
 
     contacts_list = [[] for i in range(pop_size)]
 

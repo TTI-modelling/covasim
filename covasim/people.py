@@ -123,9 +123,8 @@ class People(cvb.BasePeople):
         self._pending_isolation = defaultdict(list)
 
         #self.new_wrong_quarantines = np.full(181, 0, dtype=cvd.default_int)
-        self.current_wrong_quarantine = np.full(self.pars['pop_size'], False, dtype=bool)
         self.tests_remaining = np.full(self.pars['pop_size'], np.nan)
-
+        self.date_ili_recover = np.full(self.pars['pop_size'], np.nan)
         return
 
 
@@ -225,7 +224,10 @@ class People(cvb.BasePeople):
         # Figure out if anything needs to be done -- e.g. {'h':False, 'c':True}
         for lkey, is_dynam in self.pars['dynam_layer'].items():
             if is_dynam:
-                self.contacts[lkey].update(self)
+                if self.pars["pop_type"] == "matrix":
+                    self.contacts[lkey].update_agemixing(self)
+                else:
+                    self.contacts[lkey].update(self)
 
         return self.contacts
 
@@ -362,6 +364,7 @@ class People(cvb.BasePeople):
         quarantined = cvu.itruei(self.quarantined, diag_inds)
         self.date_end_quarantine[quarantined] = self.t # Set end quarantine date to match when the person left quarantine (and entered isolation)
         self.quarantined[diag_inds] = False # If you are diagnosed, you are isolated, not in quarantine
+        self.ttr[diag_inds] = False
 
         return len(test_pos_inds)
 
@@ -691,10 +694,12 @@ class People(cvb.BasePeople):
 
 
     def schedule_isolation(self, inds, start_date = None, period = None):
-        start_date = self.t if start_date is None else int(start_date)
+        if not isinstance(start_date, np.ndarray):
+            start_date = self.t if start_date is None else int(start_date)
+            start_date = np.array([start_date] * len(inds))
         period = self.pars['iso_period'] if period is None else int(period)
-        for ind in inds:
-            self._pending_isolation[start_date].append((ind, start_date + period))
+        for i,ind in enumerate(inds):
+            self._pending_isolation[start_date[i]].append((ind, start_date[i] + period))
         return
 
     def schedule_quarantine(self, inds, start_date=None, period=None):

@@ -1703,3 +1703,39 @@ class Layer(FlexDict):
         self['beta'][inds] = np.ones(n_new, dtype=cvd.default_float)
         return
 
+    def update_agemixing(self, people, frac=1.0):
+        '''
+        Regenerate contacts on each timestep using age mixing contact matrices.
+
+        '''
+
+        age_bins, _ = people.pars["contact_matrices"][self.label]
+        ages = people.age
+
+        p1_ages = ages[self["p1"]]
+        p2_ages = ages[self["p2"]]
+
+        new_p1 = np.array([],dtype=cvd.default_int)
+        new_p2 = np.array([],dtype=cvd.default_int)
+
+        for i,(lower, upper) in enumerate(age_bins):
+            s_inds = sc.findinds((ages >= lower) * (ages < upper))
+            s_bin_size = len(s_inds)
+            existing_source = sc.findinds((p1_ages >= lower) * (p1_ages < upper))
+            for j, (target_lower, target_upper) in enumerate(age_bins):
+                t_inds = sc.findinds((ages >= target_lower) * (ages < target_upper))
+                t_bin_size = len(t_inds)
+                if t_bin_size == 0:
+                    continue
+
+                existing_target = sc.findinds((p2_ages >= target_lower) * (p2_ages < target_upper))
+                n_contacts = int(np.round(len(np.intersect1d(existing_source,existing_target)) * frac))
+                new_p1 = np.append(new_p1,s_inds[cvu.choose_r(max_n=s_bin_size,n=n_contacts)])
+                new_p2 = np.append(new_p2,t_inds[cvu.choose_r(max_n=t_bin_size,n=n_contacts)])
+
+        # Create the contacts, not skipping self-connections
+        self['p1'] = np.array(new_p1,dtype=cvd.default_int)
+        self['p2'] = np.array(new_p2,dtype=cvd.default_int)
+        self['beta'] = np.ones(len(new_p1), dtype=cvd.default_float)
+
+        return

@@ -68,7 +68,9 @@ class PeopleMeta(sc.prettyobj):
             'known_contact',
             'quarantined',
             'vaccinated',
-            'ili'
+            'ili',
+            "wrong_quarantines",
+            "ttr"
         ]
 
         # Strain states -- these are ints
@@ -107,6 +109,7 @@ class PeopleMeta(sc.prettyobj):
         # Set the dates various events took place: these are floats per person -- used in people.py
         self.dates = [f'date_{state}' for state in self.states] # Convert each state into a date
         self.dates.append('date_pos_test') # Store the date when a person tested which will come back positive
+        self.dates.append('date_test_result') # Store the date of the test result, positive or negative
         self.dates.append('date_end_quarantine') # Store the date when a person comes out of quarantine
         self.dates.append('date_end_diagnosis') # Store the date when someone comes out of isolation
         # Duration of different states: these are floats per person -- used in people.py
@@ -149,6 +152,8 @@ result_stocks = {
     'diagnosed':   'Number of confirmed cases',
     'quarantined': 'Number in quarantine',
     'vaccinated':  'Number of people vaccinated',
+    'wrong_quarantines': "Number of people quarantined from FP",
+    "ttr": "Number of people testing to release"
 }
 
 result_stocks_by_strain = {
@@ -171,7 +176,8 @@ result_flows = {
     'quarantined':  'quarantined people',
     'vaccinations': 'vaccinations',
     'vaccinated':   'vaccinated people',
-    'wrong_quarantines': "people quarantined from false positive"
+    'wrong_quarantines': "people quarantined from false positive",
+    "ttr": "testing to release"
 }
 
 result_flows_by_strain = {
@@ -266,6 +272,8 @@ def get_default_colors():
     c.pop_nabs              = '#32733d'
     c.pop_protection        = '#9e1149'
     c.pop_symp_protection   = '#b86113'
+    c.wrong_quarantines     = c.quarantined
+    c.ttr                   = c.quarantined
     return c
 
 
