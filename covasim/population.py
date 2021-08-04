@@ -478,11 +478,12 @@ def layer_from_contact_matrix(pop_size, ages, age_bins, n_contacts, overshoot = 
             if t_bin_size == 0:
                 continue
 
-            bin_avg_contacts = n_contacts[i][j]
+            bin_avg_contacts = n_contacts[0][i][j]
+            bin_disp_contacts = n_contacts[1][i][j]
             contacts_to_gen = int(s_bin_size * bin_avg_contacts * overshoot)
             bin_contacts = cvu.choose_r(max_n=t_bin_size, n=contacts_to_gen)
-            p_count = cvu.n_poisson(bin_avg_contacts, s_bin_size)
-            p_count = np.array((p_count/2.0).round(), dtype=cvd.default_int)
+            p_count = cvu.n_neg_binomial(bin_avg_contacts/2,bin_disp_contacts,s_bin_size) #cvu.n_poisson(bin_avg_contacts, s_bin_size)
+            p_count = np.array(p_count, dtype=cvd.default_int)#np.array((p_count/2.0).round(), dtype=cvd.default_int)
             count = 0
             contacts = []
             for p in range(s_bin_size):
