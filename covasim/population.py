@@ -11,7 +11,7 @@ from . import utils as cvu
 from . import misc as cvm
 from . import data as cvdata
 from . import defaults as cvd
-from . import parameters as cvpars
+from . import parameters as cvpar
 from . import people as cvppl
 
 
@@ -24,11 +24,11 @@ __all__ = ['make_people', 'make_randpop', 'make_random_contacts',
 def make_people(sim, popdict=None, save_pop=False, popfile=None, die=True, reset=False, verbose=None, **kwargs):
     '''
     Make the actual people for the simulation. Usually called via sim.initialize(),
-    not directly by the user.
+    but can be called directly by the user.
 
     Args:
-        sim      (Sim)  : the simulation object
-        popdict  (dict) : if supplied, use this population dictionary rather than generate a new one
+        sim      (Sim)  : the simulation object; population parameters are taken from the sim object
+        popdict  (dict) : if supplied, use this population dictionary instead of generating a new one
         save_pop (bool) : whether to save the population to disk
         popfile  (bool) : if so, the filename to save to
         die      (bool) : whether or not to fail if synthetic populations are requested but not available
@@ -70,7 +70,7 @@ def make_people(sim, popdict=None, save_pop=False, popfile=None, die=True, reset
         sim.popdict = None # Once loaded, remove
     elif popdict is None: # Main use case: no popdict is supplied
         # Create the population
-        if pop_type in ['random', 'clustered', 'hybrid']:
+        if pop_type in ['random', 'clustered', 'hybrid', "matrix"]:
             popdict = make_randpop(sim, microstructure=pop_type, **kwargs)
         elif pop_type == 'synthpops':
             popdict = make_synthpop(sim, **kwargs)
@@ -83,7 +83,7 @@ def make_people(sim, popdict=None, save_pop=False, popfile=None, die=True, reset
 
     # Ensure prognoses are set
     if sim['prognoses'] is None:
-        sim['prognoses'] = cvpars.get_prognoses(sim['prog_by_age'], version=sim._default_ver)
+        sim['prognoses'] = cvpar.get_prognoses(sim['prog_by_age'], version=sim._default_ver)
 
     # Actually create the people
     people = cvppl.People(sim.pars, uid=popdict['uid'], age=popdict['age'], sex=popdict['sex'], contacts=popdict['contacts']) # List for storing the people
@@ -104,7 +104,7 @@ def make_people(sim, popdict=None, save_pop=False, popfile=None, die=True, reset
     return people
 
 
-def make_randpop(sim, use_age_data=True, use_household_data=True, sex_ratio=0.5, microstructure=False):
+def make_randpop(sim, use_age_data=True, use_household_data=True, sex_ratio=0.5, microstructure=False, **kwargs):
     '''
     Make a random population, with contacts.
 
@@ -173,6 +173,10 @@ def make_randpop(sim, use_age_data=True, use_household_data=True, sex_ratio=0.5,
     if   microstructure == 'random':    contacts, layer_keys    = make_random_contacts(pop_size, sim['contacts'])
     elif microstructure == 'clustered': contacts, layer_keys, _ = make_microstructured_contacts(pop_size, sim['contacts'])
     elif microstructure == 'hybrid':    contacts, layer_keys, _ = make_hybrid_contacts(pop_size, ages, sim['contacts'])
+    elif microstructure == "matrix":
+        contacts, layer_keys = make_contact_matrix_contacts(pop_size, ages, sim["contacts"], kwargs["contact_matrices"])
+    elif microstructure == "settings":
+        contacts, layer_keys = make_settings_contacts(pop_size, ages, kwargs["contact_matrices"], kwargs["setting_keys"], kwargs["setting_contact_mats"], kwargs["nodes_per_setting"], kwargs["settings_cooccurrence"])
     else: # pragma: no cover
         errormsg = f'Microstructure type "{microstructure}" not found; choices are random, clustered, or hybrid'
         raise NotImplementedError(errormsg)
@@ -404,3 +408,159 @@ def make_synthpop(sim=None, population=None, layer_mapping=None, community_conta
     popdict['layer_keys'] = list(layer_mapping.values())
 
     return popdict
+
+
+def check_contacts(pop_size, ages, contacts, contact_matrices, contacts_list):
+
+    mat_keys = contact_matrices.keys()
+
+    for key in mat_keys:
+        age_bins, n_contacts = contact_matrices[key]
+        print(f"LAYER: [{key}]")
+        for i, _ in enumerate(age_bins):
+            for j, _ in enumerate(age_bins):
+                print(n_contacts[i][j],end=" ")
+            print()
+
+        for i,(lower, upper) in enumerate(age_bins):
+            s_inds = sc.findinds((ages >= lower) * (ages < upper))
+            s_bin_size = len(s_inds)
+            for j, (target_lower, target_upper) in enumerate(age_bins):
+                t_inds = sc.findinds((ages >= target_lower) * (ages < target_upper))
+                counter = 0
+                for ind in s_inds:
+                    cs = contacts_list[ind][key]
+                    counter += len(np.intersect1d(t_inds, cs))
+                print(f"{counter/s_bin_size:.2f}",end=" ")
+            print()
+
+
+
+
+def make_contact_matrix_contacts(pop_size, ages, contacts_layer, contact_matrices, overshoot = 1.5):
+
+    layer_keys = ['h', 's', 'w', 'c']
+    mat_keys = contact_matrices.keys()
+    contacts_list = [{key:[] for key in layer_keys} for i in range(pop_size)]
+
+    for key in layer_keys:
+        if key not in mat_keys:
+            if key == "h":
+                contacts, _, _ = make_microstructured_contacts(pop_size, {key:contacts_layer[key]})
+            else:
+                contacts, _ = make_random_contacts(pop_size, {key:contacts_layer[key]})
+
+            for i in range(pop_size):
+                contacts_list[i][key] = contacts[i][key]
+
+
+        else:
+            age_bins, n_contacts = contact_matrices[key]
+            contacts = layer_from_contact_matrix(pop_size, ages, age_bins, n_contacts, overshoot)
+
+            for i in range(pop_size):
+                contacts_list[i][key] = contacts[i]
+
+
+    return contacts_list, layer_keys
+
+
+def layer_from_contact_matrix(pop_size, ages, age_bins, n_contacts, overshoot = 1.5):
+
+    contacts_list = [[] for i in range(pop_size)]
+
+    for i,(lower, upper) in enumerate(age_bins):
+        s_inds = sc.findinds((ages >= lower) * (ages < upper))
+        s_bin_size = len(s_inds)
+        for j, (target_lower, target_upper) in enumerate(age_bins):
+            t_inds = sc.findinds((ages >= target_lower) * (ages < target_upper))
+            t_bin_size = len(t_inds)
+            if t_bin_size == 0:
+                continue
+
+            bin_avg_contacts = n_contacts[0][i][j]
+            bin_disp_contacts = n_contacts[1][i][j]
+            contacts_to_gen = int(s_bin_size * bin_avg_contacts * overshoot)
+            bin_contacts = cvu.choose_r(max_n=t_bin_size, n=contacts_to_gen)
+            p_count = cvu.n_neg_binomial(bin_avg_contacts/2,bin_disp_contacts,s_bin_size) #cvu.n_poisson(bin_avg_contacts, s_bin_size)
+            p_count = np.array(p_count, dtype=cvd.default_int)#np.array((p_count/2.0).round(), dtype=cvd.default_int)
+            count = 0
+            contacts = []
+            for p in range(s_bin_size):
+                contacts.append(bin_contacts[count:count+p_count[p]]) # Assign people
+                count += p_count[p]
+            for k,ind in enumerate(s_inds):
+                contacts_list[ind].extend(t_inds[contacts[k]])
+
+    return contacts_list
+
+
+def make_settings_contacts(pop_size, ages, contact_matrices, setting_keys, setting_contact_mats, nodes_per_setting, settings_cooccurrence, overshoot = 1.5):
+
+    layer_keys = ['h', 's', 'w', 'c']
+    mat_keys = contact_matrices.keys()
+    contacts_list = [{key:[] for key in layer_keys} for i in range(pop_size)]
+
+    # Create contacts for layers without settings (for now we are fixing to have household, school, work and community layers, only community has settings)
+    for key in layer_keys[:-1]:
+        if key not in mat_keys:
+            if key == "h":
+                contacts, _, _ = make_microstructured_contacts(pop_size, {key:contacts_layer[key]})
+            else:
+                contacts, _ = make_random_contacts(pop_size, {key:contacts_layer[key]})
+
+            for i in range(pop_size):
+                contacts_list[i][key] = contacts[i][key]
+
+        else:
+            age_bins, n_contacts = contact_matrices[key]
+            contacts = layer_from_contact_matrix(pop_size, ages, age_bins, n_contacts, overshoot)
+
+            for i in range(pop_size):
+                contacts_list[i][key] = contacts[i]
+
+    # only a fraction of the population has contacts in settings
+    people_in_settings = np.round(np.sum([nodes_per_setting[s] for s in nodes_per_setting]) * pop_size)
+
+    #choose the actual people participating in settings
+    inds_to_settings = cvu.choose(pop_size, people_in_settings)
+
+    settings_inds = {}
+    next_ind = 0
+
+    # assign indices to settings
+    for setting in setting_keys:
+        npeople = np.round(nodes_per_setting[setting] * people_in_settings);
+        settings_inds[setting] = inds_to_settings[next_ind:(next_ind+npeople)]
+        next_ind += npeople
+
+
+    # settings cooccurrences, settings_cooccurrence is an upper triangle list with % of nodes shared between settings. We go through this list and assign the extra indices
+    setting_cooc = np.zeros(len(setting_keys),len(setting_keys))
+    setting_cooc[np.triu(len(setting_keys),1)] = settings_cooccurrence
+
+    for i in range(len(setting_keys)-1):
+        for j in range(i+1,len(setting_keys)):
+            s1 = setting_keys[i]
+            s2 = setting_keys[j]
+            npeople = np.round(setting_cooc[i,j] *  people_in_settings)
+            settings_inds[s1] = np.append(settings_inds[s1],inds_to_settings[next_ind:next_ind+npeople])
+            settings_inds[s2] = np.append(settings_inds[s2],inds_to_settings[next_ind:next_ind+npeople])
+            next_ind += npeople
+
+    # create the actual contacts, for now we just put them all in the community layer, we may want to separate them later
+    for setting in setting_keys:
+        age_bins, n_contacts = setting_contact_mats[setting]
+        inds = settings_inds[setting]
+        setting_ages = ages[inds]
+        contacts = layer_from_contact_matrix(len(inds), setting_ages, age_bins, n_contacts, overshoot)
+        for i in range(len(inds)):
+            contacts_list[inds[i]]["c"].extend(contacts[i])
+
+    #create the "other" setting, this is just normal community contacts. Do we want to force these contacts to be only outside of settings?
+    age_bins, n_contacts = setting_contact_mats["other"]
+    contacts = layer_from_contact_matrix(pop_size, ages, age_bins, n_contacts, overshoot)
+    for i in range(pop_size):
+        contacts_list[i][key] = contacts[i]
+
+    return contacts_list, layer_keys

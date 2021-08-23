@@ -123,6 +123,7 @@ class Result(object):
         npts (int): if values is None, precreate it to be of this length
         scale (bool): whether or not the value scales by population scale factor
         color (str/arr): default color for plotting (hex or RGB notation)
+        n_strains (int): the number of strains the result is for (0 for results not by strain)
 
     **Example**::
 
@@ -132,15 +133,21 @@ class Result(object):
         print(r1.values)
     '''
 
-    def __init__(self, name=None, npts=None, scale=True, color=None):
+    def __init__(self, name=None, npts=None, scale=True, color=None, n_strains=0):
         self.name =  name  # Name of this result
         self.scale = scale # Whether or not to scale the result by the scale factor
         if color is None:
-            color = cvd.get_colors()['default']
+            color = cvd.get_default_colors()['default']
         self.color = color # Default color
         if npts is None:
             npts = 0
-        self.values = np.array(np.zeros(int(npts)), dtype=cvd.result_float)
+        npts = int(npts)
+
+        if n_strains>0:
+            self.values = np.zeros((n_strains, npts), dtype=cvd.result_float)
+        else:
+            self.values = np.zeros(npts, dtype=cvd.result_float)
+
         self.low    = None
         self.high   = None
         return
@@ -238,13 +245,29 @@ class BaseSim(ParsObj):
 
     def update_pars(self, pars=None, create=False, **kwargs):
         ''' Ensure that metaparameters get used properly before being updated '''
+
+        # Merge everything together
         pars = sc.mergedicts(pars, kwargs)
         if pars:
+
+            # Define aliases
+            mapping = dict(
+                n_agents = 'pop_size',
+                init_infected = 'pop_infected',
+            )
+            for key1,key2 in mapping.items():
+                if key1 in pars:
+                    pars[key2] = pars.pop(key1)
+
+            # Handle other special parameters
             if pars.get('pop_type'):
                 cvpar.reset_layer_pars(pars, force=False)
             if pars.get('prog_by_age'):
                 pars['prognoses'] = cvpar.get_prognoses(by_age=pars['prog_by_age'], version=self._default_ver) # Reset prognoses
-            super().update_pars(pars=pars, create=create) # Call update_pars() for ParsObj
+
+            # Call update_pars() for ParsObj
+            super().update_pars(pars=pars, create=create)
+
         return
 
 
@@ -386,9 +409,23 @@ class BaseSim(ParsObj):
         return dates
 
 
-    def result_keys(self):
-        ''' Get the actual results objects, not other things stored in sim.results '''
-        keys = [key for key in self.results.keys() if isinstance(self.results[key], Result)]
+    def result_keys(self, which='main'):
+        '''
+        Get the actual results objects, not other things stored in sim.results.
+
+        If which is 'main', return only the main results keys. If 'strain', return
+        only strain keys. If 'all', return all keys.
+
+        '''
+        keys = []
+        choices = ['main', 'strain', 'all']
+        if which in ['main', 'all']:
+            keys += [key for key,res in self.results.items() if isinstance(res, Result)]
+        if which in ['strain', 'all'] and 'strain' in self.results:
+            keys += [key for key,res in self.results['strain'].items() if isinstance(res, Result)]
+        if which not in choices: # pragma: no cover
+            errormsg = f'Choice "which" not available; choices are: {sc.strjoin(choices)}'
+            raise ValueError(errormsg)
         return keys
 
 
@@ -473,7 +510,7 @@ class BaseSim(ParsObj):
 
     def to_json(self, filename=None, keys=None, tostring=False, indent=2, verbose=False, *args, **kwargs):
         '''
-        Export results as JSON.
+        Export results and parameters as JSON.
 
         Args:
             filename (str): if None, return string; else, write to file
@@ -526,25 +563,46 @@ class BaseSim(ParsObj):
         return output
 
 
-    def to_excel(self, filename=None):
+    def to_df(self, date_index=False):
         '''
-        Export results as XLSX
+        Export results to a pandas dataframe
 
         Args:
-            filename (str): if None, return string; else, write to file
+            date_index  (bool): if True, use the date as the index
+        '''
+        resdict = self.export_results(for_json=False)
+        df = pd.DataFrame.from_dict(resdict)
+        df['date'] = self.datevec
+        new_columns = ['t','date'] + df.columns[1:-1].tolist() # Get column order
+        df = df.reindex(columns=new_columns) # Reorder so 't' and 'date' are first
+        if date_index:
+            df = df.set_index('date')
+        return df
+
+
+    def to_excel(self, filename=None, skip_pars=None):
+        '''
+        Export parameters and results as Excel format
+
+        Args:
+            filename  (str): if None, return string; else, write to file
+            skip_pars (list): if provided, a custom list parameters to exclude
 
         Returns:
             An sc.Spreadsheet with an Excel file, or writes the file to disk
-
         '''
-        resdict = self.export_results(for_json=False)
-        result_df = pd.DataFrame.from_dict(resdict)
-        result_df.index = self.datevec
-        result_df.index.name = 'date'
+        if skip_pars is None:
+            skip_pars = ['strain_map', 'vaccine_map'] # These include non-string keys so fail at sc.flattendict()
 
-        par_df = pd.DataFrame.from_dict(sc.flattendict(self.pars, sep='_'), orient='index', columns=['Value'])
+        # Export results
+        result_df = self.to_df(date_index=True)
+
+        # Export parameters
+        pars = {k:v for k,v in self.pars.items() if k not in skip_pars}
+        par_df = pd.DataFrame.from_dict(sc.flattendict(pars, sep='_'), orient='index', columns=['Value'])
         par_df.index.name = 'Parameter'
 
+        # Convert to spreadsheet
         spreadsheet = sc.Spreadsheet()
         spreadsheet.freshbytes()
         with pd.ExcelWriter(spreadsheet.bytes, engine='xlsxwriter') as writer:
@@ -795,28 +853,40 @@ class BasePeople(FlexPretty):
             If the key is an integer, alias `people.person()` to return a `Person` instance
         '''
 
-        if isinstance(key, int):
-            return self.person(key)
-
         try:
             return self.__dict__[key]
         except: # pragma: no cover
-            errormsg = f'Key "{key}" is not a valid attribute of people'
-            raise AttributeError(errormsg)
+            if isinstance(key, int):
+                return self.person(key)
+            else:
+                errormsg = f'Key "{key}" is not a valid attribute of people'
+                raise AttributeError(errormsg)
 
 
     def __setitem__(self, key, value):
         ''' Ditto '''
         if self._lock and key not in self.__dict__: # pragma: no cover
-            errormsg = f'Key "{key}" is not a valid attribute of people'
+            errormsg = f'Key "{key}" is not a current attribute of people, and the people object is locked; see people.unlock()'
             raise AttributeError(errormsg)
         self.__dict__[key] = value
         return
 
 
+    def lock(self):
+        ''' Lock the people object to prevent keys from being added '''
+        self._lock = True
+        return
+
+
+    def unlock(self):
+        ''' Unlock the people object to allow keys to be added '''
+        self._lock = False
+        return
+
+
     def __len__(self):
         ''' This is just a scalar, but validate() and _resize_arrays() make sure it's right '''
-        return self.pop_size
+        return int(self.pars['pop_size'])
 
 
     def __iter__(self):
@@ -828,17 +898,32 @@ class BasePeople(FlexPretty):
     def __add__(self, people2):
         ''' Combine two people arrays '''
         newpeople = sc.dcp(self)
-        for key in self.keys():
-            newpeople.set(key, np.concatenate([newpeople[key], people2[key]]), die=False) # Allow size mismatch
+        keys = list(self.keys())
+        for key in keys:
+            npval = newpeople[key]
+            p2val = people2[key]
+            if npval.ndim == 1:
+                newpeople.set(key, np.concatenate([npval, p2val], axis=0), die=False) # Allow size mismatch
+            elif npval.ndim == 2:
+                newpeople.set(key, np.concatenate([npval, p2val], axis=1), die=False)
+            else:
+                errormsg = f'Not sure how to combine arrays of {npval.ndim} dimensions for {key}'
+                raise NotImplementedError(errormsg)
 
         # Validate
-        newpeople.pop_size += people2.pop_size
+        newpeople.pars['pop_size'] += people2.pars['pop_size']
         newpeople.validate()
 
         # Reassign UIDs so they're unique
         newpeople.set('uid', np.arange(len(newpeople)))
 
         return newpeople
+
+
+    def __radd__(self, people2):
+        ''' Allows sum() to work correctly '''
+        if not people2: return self
+        else:           return self.__add__(people2)
 
 
     def _brief(self):
@@ -906,18 +991,34 @@ class BasePeople(FlexPretty):
         ''' Count the number of people for a given key '''
         return (self[key]>0).sum()
 
+    def count_by_strain(self, key, strain):
+        ''' Count the number of people for a given key '''
+        return (self[key][strain,:]>0).sum()
+
 
     def count_not(self, key):
         ''' Count the number of people who do not have a property for a given key '''
         return (self[key]==0).sum()
 
 
-    def set_pars(self, pars):
+    def set_pars(self, pars=None):
         '''
-        Very simple method to re-link the parameters stored in the people object
-        to the sim containing it: included simply for the sake of being explicit.
+        Re-link the parameters stored in the people object to the sim containing it,
+        and perform some basic validation.
         '''
-        self.pars = pars
+        if pars is None:
+            pars = {}
+        elif sc.isnumber(pars): # Interpret as a population size
+            pars = {'pop_size':pars} # Ensure it's a dictionary
+        orig_pars = self.__dict__.get('pars') # Get the current parameters using dict's get method
+        pars = sc.mergedicts(orig_pars, pars)
+        if 'pop_size' not in pars:
+            errormsg = f'The parameter "pop_size" must be included in a population; keys supplied were:\n{sc.newlinejoin(pars.keys())}'
+            raise sc.KeyNotFoundError(errormsg)
+        pars['pop_size'] = int(pars['pop_size'])
+        pars.setdefault('n_strains', 1)
+        pars.setdefault('location', None)
+        self.pars = pars # Actually store the pars
         return
 
 
@@ -974,8 +1075,16 @@ class BasePeople(FlexPretty):
 
         # Check that the length of each array is consistent
         expected_len = len(self)
+        expected_strains = self.pars['n_strains']
         for key in self.keys():
-            actual_len = len(self[key])
+            if self[key].ndim == 1:
+                actual_len = len(self[key])
+            else: # If it's 2D, strains need to be checked separately
+                actual_strains, actual_len = self[key].shape
+                if actual_strains != expected_strains:
+                    if verbose:
+                        print(f'Resizing "{key}" from {actual_strains} to {expected_strains}')
+                    self._resize_arrays(keys=key, new_size=(expected_strains, expected_len))
             if actual_len != expected_len: # pragma: no cover
                 if die:
                     errormsg = f'Length of key "{key}" did not match population size ({actual_len} vs. {expected_len})'
@@ -992,16 +1101,22 @@ class BasePeople(FlexPretty):
         return
 
 
-    def _resize_arrays(self, pop_size=None, keys=None):
+    def _resize_arrays(self, new_size=None, keys=None):
         ''' Resize arrays if any mismatches are found '''
-        if pop_size is None:
-            pop_size = len(self)
-        self.pop_size = pop_size
+
+        # Handle None or tuple input (representing strains and pop_size)
+        if new_size is None:
+            new_size = len(self)
+        pop_size = new_size if not isinstance(new_size, tuple) else new_size[1]
+        self.pars['pop_size'] = pop_size
+
+        # Reset sizes
         if keys is None:
             keys = self.keys()
         keys = sc.promotetolist(keys)
         for key in keys:
-            self[key].resize(pop_size, refcheck=False)
+            self[key].resize(new_size, refcheck=False) # Don't worry about cross-references to the arrays
+
         return
 
 
@@ -1026,7 +1141,15 @@ class BasePeople(FlexPretty):
         ''' Method to create person from the people '''
         p = Person()
         for key in self.meta.all_states:
-            setattr(p, key, self[key][ind])
+            data = self[key]
+            if data.ndim == 1:
+                val = data[ind]
+            elif data.ndim == 2:
+                val = data[:,ind]
+            else:
+                errormsg = f'Cannot extract data from {key}: unexpected dimensionality ({data.ndim})'
+                raise ValueError(errormsg)
+            setattr(p, key, val)
 
         contacts = {}
         for lkey, layer in self.contacts.items():
@@ -1047,7 +1170,7 @@ class BasePeople(FlexPretty):
         # Handle population size
         pop_size = len(people)
         if resize:
-            self._resize_arrays(pop_size=pop_size)
+            self._resize_arrays(new_size=pop_size)
 
         # Iterate over people -- slow!
         for p,person in enumerate(people):
@@ -1580,3 +1703,39 @@ class Layer(FlexDict):
         self['beta'][inds] = np.ones(n_new, dtype=cvd.default_float)
         return
 
+    def update_agemixing(self, people, frac=1.0):
+        '''
+        Regenerate contacts on each timestep using age mixing contact matrices.
+
+        '''
+
+        age_bins, _ = people.pars["contact_matrices"][self.label]
+        ages = people.age
+
+        p1_ages = ages[self["p1"]]
+        p2_ages = ages[self["p2"]]
+
+        new_p1 = np.array([],dtype=cvd.default_int)
+        new_p2 = np.array([],dtype=cvd.default_int)
+
+        for i,(lower, upper) in enumerate(age_bins):
+            s_inds = sc.findinds((ages >= lower) * (ages < upper))
+            s_bin_size = len(s_inds)
+            existing_source = sc.findinds((p1_ages >= lower) * (p1_ages < upper))
+            for j, (target_lower, target_upper) in enumerate(age_bins):
+                t_inds = sc.findinds((ages >= target_lower) * (ages < target_upper))
+                t_bin_size = len(t_inds)
+                if t_bin_size == 0:
+                    continue
+
+                existing_target = sc.findinds((p2_ages >= target_lower) * (p2_ages < target_upper))
+                n_contacts = int(np.round(len(np.intersect1d(existing_source,existing_target)) * frac))
+                new_p1 = np.append(new_p1,s_inds[cvu.choose_r(max_n=s_bin_size,n=n_contacts)])
+                new_p2 = np.append(new_p2,t_inds[cvu.choose_r(max_n=t_bin_size,n=n_contacts)])
+
+        # Create the contacts, not skipping self-connections
+        self['p1'] = np.array(new_p1,dtype=cvd.default_int)
+        self['p2'] = np.array(new_p2,dtype=cvd.default_int)
+        self['beta'] = np.ones(len(new_p1), dtype=cvd.default_float)
+
+        return

@@ -1,30 +1,45 @@
 '''
-Demonstrate all interventions, taken from intervention docstrings
+Tests covering all the built-in interventions, mostly taken
+from the intervention's docstrings.
 '''
 
 #%% Housekeeping
 
 import os
 import sciris as sc
+import numpy as np
 import pylab as pl
 import covasim as cv
 import pytest
 
-verbose = 0
-do_plot = 1 # Whether to plot when run interactively
+verbose = -1
+do_plot = 0 # Whether to plot when run interactively
 cv.options.set(interactive=False) # Assume not running interactively
 csv_file  = os.path.join(sc.thisdir(), 'example_data.csv')
 
 
-def test_all_interventions():
+def test_all_interventions(do_plot=False):
     ''' Test all interventions supported by Covasim '''
+    sc.heading('Testing default interventions')
 
+    # Default parameters, using the random layer
     pars = sc.objdict(
         pop_size     = 1e3,
         pop_infected = 10,
-        pop_type     = 'hybrid',
         n_days       = 90,
+        verbose      = verbose,
     )
+    hpars = sc.mergedicts(pars, {'pop_type':'hybrid'}) # Some, but not all, tests require layers
+    rsim = cv.Sim(pars)
+    hsim = cv.Sim(hpars)
+
+    def make_sim(which='r', interventions=None):
+        ''' Helper function to avoid having to recreate the sim each time '''
+        if   which == 'r': sim = sc.dcp(rsim)
+        elif which == 'h': sim = sc.dcp(hsim)
+        sim['interventions'] = interventions
+        sim.initialize()
+        return sim
 
 
     #%% Define the interventions
@@ -65,34 +80,38 @@ def test_all_interventions():
     i7b = cv.contact_tracing(start_day=20, trace_probs=dict(h=0.9, s=0.7, w=0.7, c=0.3), trace_time=dict(h=0, s=1, w=1, c=3))
 
 
-    # 8. Combination
-    i8a = cv.clip_edges(days=18, changes=0.0, layers='s') # Close schools
+    # 8. Combination, with dynamically set days
+    def check_inf(interv, sim, thresh=10, close_day=18):
+        days = close_day if sim.people.infectious.sum()>thresh else np.nan
+        return days
+
+    i8a = cv.clip_edges(days=check_inf, changes=0.0, layers='s') # Close schools
     i8b = cv.clip_edges(days=[20, 32, 45], changes=[0.7, 0.3, 0.9], layers=['w', 'c']) # Reduce work and community
     i8c = cv.test_prob(start_day=38, symp_prob=0.01, asymp_prob=0.0, symp_quar_prob=1.0, asymp_quar_prob=1.0, test_delay=2) # Start testing for TTQ
     i8d = cv.contact_tracing(start_day=40, trace_probs=dict(h=0.9, s=0.7, w=0.7, c=0.3), trace_time=dict(h=0, s=1, w=1, c=3)) # Start tracing for TTQ
 
     # 9. Vaccine
-    i9a = cv.vaccine(days=20, prob=1.0, rel_sus=1.0, rel_symp=0.0)
-    i9b = cv.vaccine(days=50, prob=1.0, rel_sus=0.0, rel_symp=0.0)
+    i9a = cv.simple_vaccine(days=20, prob=1.0, rel_sus=1.0, rel_symp=0.0)
+    i9b = cv.simple_vaccine(days=50, prob=1.0, rel_sus=0.0, rel_symp=0.0)
 
     #%% Create the simulations
     sims = sc.objdict()
-    sims.dynamic      = cv.Sim(pars=pars, interventions=[i1a, i1b])
-    sims.sequence     = cv.Sim(pars=pars, interventions=i2)
-    sims.change_beta1 = cv.Sim(pars=pars, interventions=i3a)
-    sims.clip_edges1  = cv.Sim(pars=pars, interventions=i4a) # Roughly equivalent to change_beta1
-    sims.change_beta2 = cv.Sim(pars=pars, interventions=i3b)
-    sims.clip_edges2  = cv.Sim(pars=pars, interventions=i4b) # Roughly equivalent to change_beta2
-    sims.test_num     = cv.Sim(pars=pars, interventions=i5)
-    sims.test_prob    = cv.Sim(pars=pars, interventions=i6)
-    sims.tracing      = cv.Sim(pars=pars, interventions=[i7a, i7b])
-    sims.combo        = cv.Sim(pars=pars, interventions=[i8a, i8b, i8c, i8d])
-    sims.vaccine      = cv.Sim(pars=pars, interventions=[i9a, i9b])
+    sims.dynamic      = make_sim('r', [i1a, i1b])
+    sims.sequence     = make_sim('r', i2)
+    sims.change_beta1 = make_sim('h', i3a)
+    sims.clip_edges1  = make_sim('h', i4a) # Roughly equivalent to change_beta1
+    sims.change_beta2 = make_sim('r', i3b)
+    sims.clip_edges2  = make_sim('r', i4b) # Roughly equivalent to change_beta2
+    sims.test_num     = make_sim('r', i5)
+    sims.test_prob    = make_sim('r', i6)
+    sims.tracing      = make_sim('h', [i7a, i7b])
+    sims.combo        = make_sim('h', [i8a, i8b, i8c, i8d])
+    sims.vaccine      = make_sim('r', [i9a, i9b])
 
     # Run the simualations
     for key,sim in sims.items():
         sim.label = key
-        sim.run(verbose=verbose)
+        sim.run()
 
     # Test intervention retrieval methods
     sim = sims.combo
@@ -147,7 +166,7 @@ if __name__ == '__main__':
     cv.options.set(interactive=do_plot)
     T = sc.tic()
 
-    test_all_interventions()
+    test_all_interventions(do_plot=do_plot)
     test_data_interventions()
 
     sc.toc(T)

@@ -35,14 +35,29 @@ class Analyzer(sc.prettyobj):
             label = self.__class__.__name__ # Use the class name if no label is supplied
         self.label = label # e.g. "Record ages"
         self.initialized = False
+        self.finalized = False
         return
 
 
-    def initialize(self, sim):
+    def initialize(self, sim=None):
         '''
         Initialize the analyzer, e.g. convert date strings to integers.
         '''
         self.initialized = True
+        self.finalized = False
+        return
+
+
+    def finalize(self, sim=None):
+        '''
+        Finalize analyzer
+
+        This method is run once as part of `sim.finalize()` enabling the analyzer to perform any
+        final operations after the simulation is complete (e.g. rescaling)
+        '''
+        if self.finalized:
+            raise RuntimeError('Analyzer already finalized')  # Raise an error because finalizing multiple times has a high probability of producing incorrect results e.g. applying rescale factors twice
+        self.finalized = True
         return
 
 
@@ -161,10 +176,10 @@ class snapshot(Analyzer):
             date = self.dates[ind]
             self.snapshots[date] = sc.dcp(sim.people) # Take snapshot!
 
-        # On the final timestep, check that everything matches
-        if sim.t == sim.tvec[-1]:
-            validate_recorded_dates(sim, requested_dates=self.dates, recorded_dates=self.snapshots.keys(), die=self.die)
 
+    def finalize(self, sim):
+        super().finalize()
+        validate_recorded_dates(sim, requested_dates=self.dates, recorded_dates=self.snapshots.keys(), die=self.die)
         return
 
 
@@ -236,6 +251,7 @@ class age_histogram(Analyzer):
 
 
     def initialize(self, sim):
+        super().initialize()
 
         # Handle days
         self.start_day = sc.date(sim['start_day'], as_date=False) # Get the start day, as a string
@@ -269,8 +285,6 @@ class age_histogram(Analyzer):
                 self.data = self.datafile # Use it directly
                 self.datafile = None
 
-        self.initialized = True
-
         return
 
 
@@ -285,10 +299,10 @@ class age_histogram(Analyzer):
                 inds = sim.people.defined(f'date_{state}') # Pull out people for which this state is defined
                 self.hists[date][state] = np.histogram(age[inds], bins=self.edges)[0]*scale # Actually count the people
 
-        # On the final timestep, check that everything matches
-        if sim.t == sim.tvec[-1]:
-            validate_recorded_dates(sim, requested_dates=self.dates, recorded_dates=self.hists.keys(), die=self.die)
 
+    def finalize(self, sim):
+        super().finalize()
+        validate_recorded_dates(sim, requested_dates=self.dates, recorded_dates=self.hists.keys(), die=self.die)
         return
 
 
@@ -419,6 +433,7 @@ class daily_age_stats(Analyzer):
 
 
     def initialize(self, sim):
+        super().initialize()
 
         if self.states is None:
             self.states = ['exposed', 'severe', 'dead', 'tested', 'diagnosed']
@@ -429,7 +444,7 @@ class daily_age_stats(Analyzer):
         self.bins = self.edges[:-1]  # Don't include the last edge in the bins
 
         self.start_day = sim['start_day']
-        self.initialized = True
+
         return
 
 
@@ -576,6 +591,7 @@ class daily_stats(Analyzer):
 
 
     def initialize(self, sim):
+        super().initialize()
         if self.days is None:
             self.days = sc.dcp(sim.tvec)
         else:
@@ -584,7 +600,6 @@ class daily_stats(Analyzer):
         self.keys =  ['exposed', 'infectious', 'symptomatic', 'severe', 'critical', 'known_contact', 'quarantined', 'diagnosed', 'recovered', 'dead']
         self.basekeys = ['stocks', 'trans', 'source', 'test', 'quar'] # Categories of things to plot
         self.extrakeys = ['layer_counts', 'extra']
-        self.initialized = True
         return
 
 
