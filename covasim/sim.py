@@ -411,14 +411,12 @@ class Sim(cvb.BaseSim):
 
         if self['infection_dynamics'] == 'default':
 
-            print('Initialising infection dynamics with default model')
             self.infection_dynamics = cvinf.HighLowInfectiousness()
             self.infection_dynamics.initialize(self)
 
             pass
         elif isinstance(self['infection_dynamics'], (cvinf.InfectionDynamics)):
 
-            print('Initialising infection dynamics with custom model')
             self.infection_dynamics = self['infection_dynamics']
             self.infection_dynamics.initialize(self)
 
@@ -538,7 +536,7 @@ class Sim(cvb.BaseSim):
         beta         = cvd.default_float(self['beta'])
         asymp_factor = cvd.default_float(self['asymp_factor'])
 
-        # Make a call to infection dynamics to 
+        # Make a call to infection dynamics to initialise
         infectiousness = self.infection_dynamics.compute_infectiousness(self)
 
         for lkey,layer in contacts.items():
@@ -1050,6 +1048,20 @@ class Sim(cvb.BaseSim):
             self.results.fit = fit
             return
 
+    def compute_fit_custom(self, fit_analyzer: cva.Analyzer, output = True, *args, **kwargs):
+        '''
+        For an inputted fit object, computes the goodness of fit metrics.
+
+        Accepts custom fit objects, unlike comput_fit
+        '''
+        
+        fit = fit_analyzer(self, *args, **kwargs)
+
+        if output:
+            return fit
+        else:
+            self.results.fit = fit
+            return
 
     def make_age_histogram(self, *args, output=True, **kwargs):
         '''
