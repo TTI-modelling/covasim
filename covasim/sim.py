@@ -459,14 +459,12 @@ class Sim(cvb.BaseSim):
 
         if self['infection_dynamics'] == 'default':
 
-            print('Initialising infection dynamics with default model')
             self.infection_dynamics = cvinf.HighLowInfectiousness()
             self.infection_dynamics.initialize(self)
 
             pass
         elif isinstance(self['infection_dynamics'], (cvinf.InfectionDynamics)):
 
-            print('Initialising infection dynamics with custom model')
             self.infection_dynamics = self['infection_dynamics']
             self.infection_dynamics.initialize(self)
 
@@ -628,14 +626,8 @@ class Sim(cvb.BaseSim):
 
         people.update_states_post() # Check for state changes after interventions
 
-        # Compute viral loads
-        frac_time = cvd.default_float(self['viral_dist']['frac_time'])
-        load_ratio = cvd.default_float(self['viral_dist']['load_ratio'])
-        high_cap = cvd.default_float(self['viral_dist']['high_cap'])
-        date_inf = people.date_infectious
-        date_rec = people.date_recovered
-        date_dead = people.date_dead
-        viral_load = cvu.compute_viral_load(t, date_inf, date_rec, date_dead, frac_time, load_ratio, high_cap)
+        # Compute viral loads, using infection dynamics
+        viral_load = self.infection_dynamics.compute_infectiousness(self)
 
         # Shorten useful parameters
         ns = self['n_strains'] # Shorten number of strains
@@ -661,9 +653,6 @@ class Sim(cvb.BaseSim):
             # Deal with strain parameters
             rel_beta = self['rel_beta']
             asymp_factor = self['asymp_factor']
-
-            # Make a call to infection dynamics to
-            #infectiousness = self.infection_dynamics.compute_infectiousness(self)
 
             if strain:
                 strain_label = self.pars['strain_map'][strain]
@@ -1206,6 +1195,20 @@ class Sim(cvb.BaseSim):
             self.results.fit = fit
             return
 
+    def compute_fit_custom(self, fit_analyzer: cva.Analyzer, output = True, *args, **kwargs):
+        '''
+        For an inputted fit object, computes the goodness of fit metrics.
+
+        Accepts custom fit objects, unlike comput_fit
+        '''
+        
+        fit = fit_analyzer(self, *args, **kwargs)
+
+        if output:
+            return fit
+        else:
+            self.results.fit = fit
+            return
 
     def make_age_histogram(self, *args, output=True, **kwargs):
         '''
