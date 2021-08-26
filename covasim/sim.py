@@ -337,6 +337,10 @@ class Sim(cvb.BaseSim):
         for key,label in cvd.result_stocks_by_strain.items():
             self.results['strain'][f'n_{key}'] = init_res(label, color=dcols[key], n_strains=ns)
 
+        
+        self.results['new_tests_lfa'] = init_res('Number of new LFD tests', scale=False)
+        self.results['new_tests_pcr'] = init_res('Number of new PCR tests', scale=False)
+
         # Populate the rest of the results
         if self['rescale']:
             scale = 1
