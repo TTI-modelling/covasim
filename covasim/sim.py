@@ -626,14 +626,8 @@ class Sim(cvb.BaseSim):
 
         people.update_states_post() # Check for state changes after interventions
 
-        # Compute viral loads
-        frac_time = cvd.default_float(self['viral_dist']['frac_time'])
-        load_ratio = cvd.default_float(self['viral_dist']['load_ratio'])
-        high_cap = cvd.default_float(self['viral_dist']['high_cap'])
-        date_inf = people.date_infectious
-        date_rec = people.date_recovered
-        date_dead = people.date_dead
-        viral_load = cvu.compute_viral_load(t, date_inf, date_rec, date_dead, frac_time, load_ratio, high_cap)
+        # Compute viral loads, using infection dynamics
+        viral_load = self.infection_dynamics.compute_infectiousness(self)
 
         # Shorten useful parameters
         ns = self['n_strains'] # Shorten number of strains
