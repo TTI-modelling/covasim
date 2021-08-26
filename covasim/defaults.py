@@ -70,7 +70,8 @@ class PeopleMeta(sc.prettyobj):
             'vaccinated',
             'ili',
             "wrong_quarantines",
-            "ttr"
+            "ttr",
+            "ili_ttr"
         ]
 
         # Strain states -- these are ints
@@ -153,7 +154,8 @@ result_stocks = {
     'quarantined': 'Number in quarantine',
     'vaccinated':  'Number of people vaccinated',
     'wrong_quarantines': "Number of people quarantined from FP",
-    "ttr": "Number of people testing to release"
+    "ttr": "Number of people testing to release",
+    "ili_ttr": "Number of people testing due to symptoms (COVID or ILI)"
 }
 
 result_stocks_by_strain = {
@@ -172,12 +174,15 @@ result_flows = {
     'recoveries':   'recoveries',
     'deaths':       'deaths',
     'tests':        'tests',
+    'tests_lfd':    'LFD tests done',
+    'tests_pcr':    'PCR tests done',
     'diagnoses':    'diagnoses',
     'quarantined':  'quarantined people',
     'vaccinations': 'vaccinations',
     'vaccinated':   'vaccinated people',
     'wrong_quarantines': "people quarantined from false positive",
-    "ttr": "testing to release"
+    "ttr": "testing to release",
+    "ili_ttr": "testing due to symptoms"
 }
 
 result_flows_by_strain = {
@@ -256,6 +261,8 @@ def get_default_colors():
     c.reinfections          = '#732e26'
     c.infections_by_strain  = '#b62413'
     c.tests                 = '#aaa8ff'
+    c.tests_lfd             = '#aaa8ff'
+    c.tests_pcr             = '#aaa8ff'
     c.diagnoses             = '#5f5cd2'
     c.diagnosed             = c.diagnoses
     c.quarantined           = '#5c399c'
@@ -274,6 +281,7 @@ def get_default_colors():
     c.pop_symp_protection   = '#b86113'
     c.wrong_quarantines     = c.quarantined
     c.ttr                   = c.quarantined
+    c.ili_ttr               = c.quarantined
     return c
 
 
