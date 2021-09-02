@@ -174,7 +174,7 @@ result_flows = {
     'recoveries':   'recoveries',
     'deaths':       'deaths',
     'tests':        'tests',
-    'tests_lfd':    'LFD tests done',
+    'tests_lfa':    'LFD tests done',
     'tests_pcr':    'PCR tests done',
     'diagnoses':    'diagnoses',
     'quarantined':  'quarantined people',
@@ -261,7 +261,7 @@ def get_default_colors():
     c.reinfections          = '#732e26'
     c.infections_by_strain  = '#b62413'
     c.tests                 = '#aaa8ff'
-    c.tests_lfd             = '#aaa8ff'
+    c.tests_lfa             = '#aaa8ff'
     c.tests_pcr             = '#aaa8ff'
     c.diagnoses             = '#5f5cd2'
     c.diagnosed             = c.diagnoses
