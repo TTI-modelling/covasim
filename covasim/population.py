@@ -495,6 +495,50 @@ def layer_from_contact_matrix(pop_size, ages, age_bins, n_contacts, overshoot = 
     return contacts_list
 
 
+def PA_layer_contact_matrix(pop_size, ages, age_bins, n_contacts):
+
+    contacts_list = [[] for i in range(pop_size)]
+    degree = {i: 1 for i in range(pop_size)}
+
+    for i, (lower, upper) in enumerate(age_bins):
+        s_inds = sc.findinds((ages >= lower) * (ages < upper))
+        s_bin_size = len(s_inds)
+        for j, (target_lower, target_upper) in enumerate(age_bins):
+            t_inds = sc.findinds((ages >= target_lower) * (ages < target_upper))
+            t_bin_size = len(t_inds)
+            if t_bin_size == 0:
+                continue
+
+            bin_avg_contacts = n_contacts[0][i][j]
+            bin_disp_contacts = n_contacts[1][i][j]
+
+            for p in s_inds:
+                p_count = cvu.n_neg_binomial(bin_avg_contacts/2,bin_disp_contacts,1)[0]
+                cons = cvu.choose_w(probs = [degree[n] for n in t_inds],n = p_count)
+                for n in cons:
+                    degree[t_inds[n]] += 1
+                degree[p] += p_count
+                contacts_list[p].extend(t_inds[cons])
+
+    return contacts_list
+
+
+def SBM_layer_contact_matrix(pop_size, ages, age_bins, n_contacts):
+
+    contacts_list = [[] for i in range(pop_size)]
+
+    for i, (lower, upper) in enumerate(age_bins):
+        s_inds = sc.findinds((ages >= lower) * (ages < upper))
+        s_bin_size = len(s_inds)
+        for j, (target_lower, target_upper) in enumerate(age_bins):
+            t_inds = sc.findinds((ages >= target_lower) * (ages < target_upper))
+            t_bin_size = len(t_inds)
+            if t_bin_size == 0:
+                continue
+
+    return contacts_list
+
+
 def make_settings_contacts(pop_size, ages, contact_matrices, setting_keys, setting_contact_mats, nodes_per_setting, settings_cooccurrence, overshoot = 1.5):
 
     layer_keys = ['h', 's', 'w', 'c']
